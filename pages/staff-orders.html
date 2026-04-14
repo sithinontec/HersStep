@@ -48,18 +48,75 @@
         }
 
         const list = document.getElementById('orders-list');
-        if (store.orders && list) {
-            if (store.orders.length === 0) list.textContent = 'No orders yet.';
-            else {
-                list.innerHTML = store.orders.map(o => `
-                    <div style="border-bottom:1px solid #eee; padding:0.5rem 0;">
-                        <div><strong>${o.id}</strong> — ${o.status} — ${new Date(o.createdAt).toLocaleString()}</div>
-                        <div>Items: ${o.items.map(i => i.name + ' x' + i.quantity).join(', ')}</div>
-                        <div>Total: ${formatCurrency(o.total)}</div>
-                    </div>
-                `).join('');
+
+        function renderOrders() {
+            if (!list) return;
+            const arr = (store.orders || []).slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+            if (arr.length === 0) {
+                list.textContent = 'No orders yet.';
+                return;
             }
+
+            list.innerHTML = arr.map(o => `
+                <div style="border-bottom:1px solid #eee; padding:0.5rem 0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div><strong>${o.id}</strong> — ${new Date(o.createdAt).toLocaleString()}</div>
+                        <div>
+                            <select onchange="changeOrderStatus('${o.id}', this.value)">
+                                <option value="placed" ${o.status==='placed' ? 'selected' : ''}>Placed</option>
+                                <option value="processing" ${o.status==='processing' ? 'selected' : ''}>Processing</option>
+                                <option value="shipped" ${o.status==='shipped' ? 'selected' : ''}>Shipped</option>
+                                <option value="delivered" ${o.status==='delivered' ? 'selected' : ''}>Delivered</option>
+                                <option value="cancelled" ${o.status==='cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top:0.5rem;">Items: ${o.items.map(i => i.name + ' x' + i.quantity).join(', ')}</div>
+                    <div>Total: ${formatCurrency(o.total)}</div>
+                    <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+                        <a class="btn btn-secondary" href="order-details.html?orderId=${o.id}">View</a>
+                        ${o.status !== 'cancelled' ? `<button class="btn btn-danger" onclick="cancelOrder('${o.id}')">Cancel</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
         }
+
+        window.changeOrderStatus = function(orderId, status) {
+            if (!orderId) return;
+            if (status === 'cancelled') {
+                if (!confirm('Cancel this order? This will restore stock.')) {
+                    renderOrders();
+                    return;
+                }
+                const ok = orders.cancel(orderId);
+                if (ok) showNotification('Order cancelled', 'success');
+                else showNotification('Failed to cancel order', 'error');
+            } else {
+                if (!confirm('Change order status to "' + status + '"?')) {
+                    renderOrders();
+                    return;
+                }
+                const ok = orders.updateStatus(orderId, status);
+                if (ok) showNotification('Order status updated', 'success');
+                else showNotification('Failed to update status', 'error');
+            }
+            renderOrders();
+        };
+
+        window.cancelOrder = function(orderId) {
+            if (!orderId) return;
+            if (!confirm('Are you sure you want to cancel this order?')) return;
+            const ok = orders.cancel(orderId);
+            if (ok) {
+                showNotification('Order cancelled', 'success');
+                renderOrders();
+            } else {
+                showNotification('Failed to cancel order', 'error');
+            }
+        };
+
+        // Initial render
+        renderOrders();
     </script>
 </body>
 </html>
