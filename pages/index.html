@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HersStep - Women's Footwear Online Shop</title>
+    <title>HerStep - Women's Footwear Online Shop</title>
     <link rel="stylesheet" href="../css/styles.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
             <span>Contact: support@hersstep.com</span>
         </div>
         <nav class="nav-container">
-            <a href="index.html" class="logo">HersStep</a>
+            <a href="index.html" class="logo">HerStep</a>
             <ul class="nav-menu">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="products.html">Shop</a></li>
@@ -84,7 +84,7 @@
     <footer>
         <div class="footer-content">
             <div class="footer-section">
-                <h3>About HersStep</h3>
+                <h3>About HerStep</h3>
                 <p>Your destination for stylish and comfortable women's footwear. We believe every step should be confident and comfortable.</p>
             </div>
             <div class="footer-section">
@@ -115,7 +115,7 @@
             </div>
         </div>
         <div style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
-            <p>&copy; 2026 HersStep. All rights reserved.</p>
+            <p>&copy; 2026 HerStep. All rights reserved.</p>
         </div>
     </footer>
 
@@ -128,7 +128,7 @@
             
             container.innerHTML = featuredProducts.map(product => `
                 <div class="card">
-                    <div class="card-img">${product.image}</div>
+                    <div class="card-img"><img src="${product.image}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;"></div>
                     <div class="card-body">
                         <h3 class="card-title">${product.name}</h3>
                         <p class="card-text">${product.description}</p>

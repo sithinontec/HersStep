@@ -49,9 +49,17 @@
         }
 
         const el = document.getElementById('report-summary');
-        const totalSales = store.orders.reduce((s, o) => s + (o.total || 0), 0);
-        const count = store.orders.length;
-        el.innerHTML = `<div>Total orders: ${count}</div><div>Total sales: ${formatCurrency(totalSales)}</div>`;
+        function renderReport() {
+            const totalSales = (store.orders || []).reduce((s, o) => s + (o.total || 0), 0);
+            const count = (store.orders || []).length;
+            el.innerHTML = `<div>Total orders: ${count}</div><div>Total sales: ${formatCurrency(totalSales)}</div>`;
+        }
+
+        if (typeof orders !== 'undefined' && typeof orders.loadOrders === 'function') {
+            orders.loadOrders().then(() => renderReport()).catch(() => renderReport());
+        } else {
+            renderReport();
+        }
     </script>
 </body>
 </html>

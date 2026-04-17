@@ -31,11 +31,11 @@
                     <div id="add-product-error" class="error-message" style="display:none;margin-bottom:0.5rem;"></div>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
                         <input id="new-name" class="form-control" placeholder="Product name">
-                        <input id="new-category" class="form-control" placeholder="Category">
+                        <input id="new-model" class="form-control" placeholder="Model">
                         <input id="new-price" class="form-control" placeholder="Price" type="number" step="0.01">
                         <input id="new-stock" class="form-control" placeholder="Stock" type="number">
-                        <input id="new-image" class="form-control" placeholder="Image (emoji)">
-                        <input id="new-rating" class="form-control" placeholder="Rating" type="number" step="0.1" min="0" max="5">
+                        <input id="new-color" class="form-control" placeholder="Color">
+                        <input id="new-image" class="form-control" placeholder="Image URL (http...)">
                     </div>
                     <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
                         <input id="new-description" class="form-control" placeholder="Short description" style="flex:1;">
@@ -51,8 +51,8 @@
                     <!-- Filter and Sort Controls -->
                     <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
                         <input id="filter-search" class="form-control" placeholder="Search products..." style="min-width:200px;">
-                        <select id="filter-category" class="form-control" style="min-width:150px;">
-                            <option value="">All Categories</option>
+                        <select id="filter-model" class="form-control" style="min-width:150px;">
+                            <option value="">All Models</option>
                         </select>
                         <select id="sort-by" class="form-control" style="min-width:150px;">
                             <option value="name">Sort by Name</option>
@@ -60,7 +60,8 @@
                             <option value="price-desc">Price: High to Low</option>
                             <option value="stock-asc">Stock: Low to High</option>
                             <option value="stock-desc">Stock: High to Low</option>
-                            <option value="rating">Sort by Rating</option>
+                            <option value="model">Sort by Model</option>
+                            <option value="color">Sort by Color</option>
                         </select>
                         <button id="save-all-btn" class="btn btn-success" style="display:none;">💾 Save All Changes</button>
                     </div>
@@ -89,17 +90,17 @@
         const addBtn = document.getElementById('add-product-btn');
         const addError = document.getElementById('add-product-error');
         const filterSearch = document.getElementById('filter-search');
-        const filterCategory = document.getElementById('filter-category');
+        const filterModel = document.getElementById('filter-model');
         const sortBy = document.getElementById('sort-by');
         const saveAllBtn = document.getElementById('save-all-btn');
 
         let editedProducts = new Set();
 
-        // Populate category filter
+        // Populate model filter
         function populateCategories() {
-            const categories = [...new Set(store.products.map(p => p.category))].sort();
-            filterCategory.innerHTML = '<option value="">All Categories</option>' + 
-                categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            const models = [...new Set(store.products.map(p => p.model))].sort();
+            filterModel.innerHTML = '<option value="">All Models</option>' + 
+                models.map(m => `<option value="${m}">${m}</option>`).join('');
         }
 
         // Filter and sort products
@@ -111,15 +112,16 @@
             if (searchTerm) {
                 filtered = filtered.filter(p => 
                     p.name.toLowerCase().includes(searchTerm) ||
-                    p.category.toLowerCase().includes(searchTerm) ||
+                    (p.model && p.model.toLowerCase().includes(searchTerm)) ||
+                    (p.color && p.color.toLowerCase().includes(searchTerm)) ||
                     (p.description && p.description.toLowerCase().includes(searchTerm))
                 );
             }
 
-            // Category filter
-            const selectedCategory = filterCategory.value;
-            if (selectedCategory) {
-                filtered = filtered.filter(p => p.category === selectedCategory);
+            // Model filter
+            const selectedModel = filterModel.value;
+            if (selectedModel) {
+                filtered = filtered.filter(p => p.model === selectedModel);
             }
 
             // Sorting
@@ -132,12 +134,12 @@
                         return a.price - b.price;
                     case 'price-desc':
                         return b.price - a.price;
-                    case 'stock-asc':
-                        return a.stock - b.stock;
                     case 'stock-desc':
                         return b.stock - a.stock;
-                    case 'rating':
-                        return (b.rating || 0) - (a.rating || 0);
+                    case 'model':
+                        return (a.model || '').localeCompare(b.model || '');
+                    case 'color':
+                        return (a.color || '').localeCompare(b.color || '');
                     default:
                         return 0;
                 }
@@ -157,9 +159,12 @@
 
             listEl.innerHTML = filtered.map(p => `
                 <div class="product-row" data-id="${p.id}" style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;border-bottom:1px solid #eee;${editedProducts.has(p.id) ? 'background-color:#fff3cd;' : ''}">
-                    <div style="flex:1;">
-                        <strong>${p.image || '👟'} ${p.name}</strong>
-                        <div style="font-size:0.9rem;color:#666">${p.category} · ${p.description || ''} · Rating: ${Number(p.rating || 0).toFixed(1)}</div>
+                    <div style="flex:1; display:flex; align-items:center; gap:0.75rem;">
+                        <img src="${p.image || 'https://via.placeholder.com/64'}" alt="${p.name}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;">
+                        <div>
+                            <strong>${p.name}</strong>
+                            <div style="font-size:0.9rem;color:#666">${p.model} · ${p.color} · ${p.description || ''}</div>
+                        </div>
                     </div>
                     <div style="width:140px;text-align:right">${formatCurrency(p.price)}</div>
                     <div style="width:180px;text-align:center; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
@@ -170,7 +175,7 @@
                             style="width:60px;text-align:center;font-weight:bold;font-size:1.1rem;border:1px solid #ddd;border-radius:4px;padding:0.25rem;">
                         <button class="btn btn-sm" onclick="adjustStock(${p.id}, +1)">+</button>
                     </div>
-                    <div style="width:180px;text-align:right; display:flex; gap:0.25rem; justify-content:flex-end;">
+                    <div style="width:220px;text-align:right; display:flex; gap:0.25rem; justify-content:flex-end;">
                         <button class="btn btn-sm" onclick="startEditProduct(${p.id})">Edit</button>
                         <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">Delete</button>
                     </div>
@@ -178,32 +183,40 @@
             `).join('');
         }
 
-        window.adjustStock = function(id, delta) {
+        window.adjustStock = async function(id, delta) {
             const p = products.getById(id);
             if (!p) return;
             
             const oldStock = p.stock;
             const newStock = Math.max(0, oldStock + delta);
             if (newStock !== oldStock) {
-                products.update(id, { stock: newStock });
-                editedProducts.add(id);
-                updateSaveButton();
-                renderProducts();
-                showNotification(`Stock updated: ${p.name} (${oldStock} → ${newStock})`, 'success');
+                try {
+                    await products.update(id, { stock: newStock });
+                    editedProducts.add(id);
+                    updateSaveButton();
+                    renderProducts();
+                    showNotification(`Stock updated: ${p.name} (${oldStock} → ${newStock})`, 'success');
+                } catch (e) {
+                    showNotification(e.message || 'Failed to update stock', 'error');
+                }
             }
         };
 
-        window.updateStockDirect = function(id, newStockValue) {
+        window.updateStockDirect = async function(id, newStockValue) {
             const p = products.getById(id);
             if (!p) return;
             
             const newStock = Math.max(0, parseInt(newStockValue, 10) || 0);
             if (newStock !== p.stock) {
-                products.update(id, { stock: newStock });
-                editedProducts.add(id);
-                updateSaveButton();
-                showNotification(`Stock updated: ${p.name} (${p.stock} → ${newStock})`, 'success');
-                renderProducts();
+                try {
+                    await products.update(id, { stock: newStock });
+                    editedProducts.add(id);
+                    updateSaveButton();
+                    showNotification(`Stock updated: ${p.name} (${p.stock} → ${newStock})`, 'success');
+                    renderProducts();
+                } catch (e) {
+                    showNotification(e.message || 'Failed to update stock', 'error');
+                }
             }
         };
 
@@ -220,19 +233,19 @@
 
         function clearAddForm() {
             document.getElementById('new-name').value = '';
-            document.getElementById('new-category').value = '';
+            document.getElementById('new-model').value = '';
             document.getElementById('new-price').value = '';
             document.getElementById('new-stock').value = '';
             document.getElementById('new-description').value = '';
             document.getElementById('new-image').value = '';
-            document.getElementById('new-rating').value = '';
+            document.getElementById('new-color').value = '';
             addError.style.display = 'none';
             addError.textContent = '';
         }
 
         // Filter event listeners
         filterSearch.addEventListener('input', renderProducts);
-        filterCategory.addEventListener('change', renderProducts);
+        filterModel.addEventListener('change', renderProducts);
         sortBy.addEventListener('change', renderProducts);
 
         // Save all button
@@ -248,23 +261,21 @@
         // Auto-save to localStorage on add/delete (optional - can be removed if you prefer manual save only)
         // For now, we keep manual save but track all changes
 
-        addBtn.addEventListener('click', function() {
+        addBtn.addEventListener('click', async function() {
             // Clamp and parse inputs
             const rawPrice = parseFloat(document.getElementById('new-price').value);
             const priceVal = isNaN(rawPrice) ? 0 : Math.max(0, Math.round(rawPrice * 100) / 100);
             const rawStock = parseInt(document.getElementById('new-stock').value, 10);
             const stockVal = isNaN(rawStock) ? 0 : Math.max(0, rawStock);
-            const rawR = parseFloat(document.getElementById('new-rating').value);
-            const rVal = isNaN(rawR) ? 0 : Math.round(Math.max(0, Math.min(5, rawR)) * 10) / 10;
 
             const productData = {
                 name: document.getElementById('new-name').value.trim(),
-                category: document.getElementById('new-category').value.trim(),
+                model: document.getElementById('new-model').value.trim(),
+                color: document.getElementById('new-color').value.trim(),
                 price: priceVal,
                 stock: stockVal,
                 description: document.getElementById('new-description').value.trim(),
-                image: document.getElementById('new-image').value.trim() || '👟',
-                rating: rVal
+                image: document.getElementById('new-image').value.trim() || 'https://via.placeholder.com/300x200?text=Product'
             };
 
             const errors = products.validate(productData);
@@ -274,12 +285,17 @@
                 return;
             }
 
-            products.add(productData);
-            markAsEdited('new'); // Mark that there are changes
-            showNotification('Product added - don\'t forget to save all changes!', 'success');
-            clearAddForm();
-            populateCategories(); // Refresh categories in case new category was added
-            renderProducts();
+            try {
+                await products.add(productData);
+                markAsEdited('new'); // Mark that there are changes
+                showNotification('Product added - don\'t forget to save all changes!', 'success');
+                clearAddForm();
+                populateCategories(); // Refresh models in case new model was added
+                renderProducts();
+            } catch (e) {
+                addError.style.display = 'block';
+                addError.textContent = e.message || 'Failed to add product';
+            }
         });
 
         window.startEditProduct = function(id) {
@@ -288,38 +304,36 @@
             if (!row || !p) return;
 
             row.innerHTML = `
-                <div style="flex:1; display:grid; grid-template-columns: 1fr; gap:0.25rem;">
-                    <input id="edit-name-${id}" class="form-control" value="${p.name}">
-                    <input id="edit-category-${id}" class="form-control" value="${p.category}">
-                    <input id="edit-description-${id}" class="form-control" value="${p.description}">
+                <div style="flex:1; display:grid; grid-template-columns: 120px 1fr; gap:0.25rem; align-items:center;">
+                    <div style="font-weight:600; color:#333; padding-right:0.5rem;">Name</div><input id="edit-name-${id}" class="form-control" value="${p.name}">
+                    <div style="font-weight:600; color:#333; padding-right:0.5rem;">Model</div><input id="edit-model-${id}" class="form-control" value="${p.model}">
+                    <div style="font-weight:600; color:#333; padding-right:0.5rem;">Color</div><input id="edit-color-${id}" class="form-control" value="${p.color}">
+                    <div style="font-weight:600; color:#333; padding-right:0.5rem;">Details</div><input id="edit-description-${id}" class="form-control" value="${p.description}">
                 </div>
-                <div style="width:160px;text-align:right; display:grid; gap:0.25rem;">
-                    <input id="edit-price-${id}" class="form-control" value="${p.price}" type="number" step="0.01">
-                    <input id="edit-stock-${id}" class="form-control" value="${p.stock}" type="number">
-                    <input id="edit-rating-${id}" class="form-control" value="${p.rating || 0}" type="number" step="0.1" min="0" max="5">
+                <div style="width:200px;text-align:right; display:grid; gap:0.25rem;">
+                    <div style="font-weight:600; color:#333;">Price</div><input id="edit-price-${id}" class="form-control" value="${p.price}" type="number" step="0.01">
+                    <div style="font-weight:600; color:#333;">Stock</div><input id="edit-stock-${id}" class="form-control" value="${p.stock}" type="number">
                 </div>
-                <div style="width:220px;text-align:right; display:flex; gap:0.25rem; justify-content:flex-end;">
+                <div style="width:220px;text-align:right; display:flex; gap:0.25rem; justify-content:flex-end; align-items:center;">
                     <button class="btn btn-success" onclick="saveEditProduct(${id})">Save</button>
                     <button class="btn btn-secondary" onclick="renderProducts()">Cancel</button>
                 </div>
             `;
         };
 
-        window.saveEditProduct = function(id) {
+        window.saveEditProduct = async function(id) {
             const rawPrice2 = parseFloat(document.getElementById(`edit-price-${id}`).value);
             const priceVal2 = isNaN(rawPrice2) ? 0 : Math.max(0, Math.round(rawPrice2 * 100) / 100);
             const rawStock2 = parseInt(document.getElementById(`edit-stock-${id}`).value, 10);
             const stockVal2 = isNaN(rawStock2) ? 0 : Math.max(0, rawStock2);
-            const rawR2 = parseFloat(document.getElementById(`edit-rating-${id}`).value);
-            const rVal2 = isNaN(rawR2) ? 0 : Math.round(Math.max(0, Math.min(5, rawR2)) * 10) / 10;
 
             const updates = {
                 name: document.getElementById(`edit-name-${id}`).value.trim(),
-                category: document.getElementById(`edit-category-${id}`).value.trim(),
+                model: document.getElementById(`edit-model-${id}`).value.trim(),
+                color: document.getElementById(`edit-color-${id}`).value.trim(),
                 description: document.getElementById(`edit-description-${id}`).value.trim(),
                 price: priceVal2,
-                stock: stockVal2,
-                rating: rVal2
+                stock: stockVal2
             };
 
             const errors = products.validate(updates, id);
@@ -328,26 +342,34 @@
                 return;
             }
 
-            products.update(id, updates);
-            editedProducts.add(id);
-            updateSaveButton();
-            showNotification('Product updated - don\'t forget to save all changes!', 'success');
-            renderProducts();
+            try {
+                await products.update(id, updates);
+                editedProducts.add(id);
+                updateSaveButton();
+                showNotification('Product updated - don\'t forget to save all changes!', 'success');
+                renderProducts();
+            } catch (e) {
+                showNotification(e.message || 'Failed to update product', 'error');
+            }
         };
 
         // Track when products are loaded to ensure save button shows for any changes
 
-        window.deleteProduct = function(id) {
+        window.deleteProduct = async function(id) {
             if (!confirm('Delete this product?')) return;
-            const ok = products.remove(id);
-            if (ok) {
-                editedProducts.delete(id); // Remove from edited set if it was there
-                markAsEdited('delete'); // Mark that there are changes
-                showNotification('Product deleted - don\'t forget to save all changes!', 'info');
-                populateCategories(); // Refresh categories in case last product of category was deleted
-                renderProducts();
-            } else {
-                showNotification('Failed to delete product', 'error');
+            try {
+                const ok = await products.remove(id);
+                if (ok) {
+                    editedProducts.delete(id); // Remove from edited set if it was there
+                    markAsEdited('delete'); // Mark that there are changes
+                    showNotification('Product deleted - don\'t forget to save all changes!', 'info');
+                    populateCategories(); // Refresh models in case last product of model was deleted
+                    renderProducts();
+                } else {
+                    showNotification('Failed to delete product', 'error');
+                }
+            } catch (e) {
+                showNotification(e.message || 'Failed to delete product', 'error');
             }
         };
 

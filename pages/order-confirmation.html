@@ -99,7 +99,12 @@
             `;
         }
         
-        loadOrderDetails();
+        // Ensure orders have been loaded from server before trying to display details
+        if (typeof orders !== 'undefined' && typeof orders.loadOrders === 'function') {
+            orders.loadOrders().then(() => loadOrderDetails()).catch(() => loadOrderDetails());
+        } else {
+            loadOrderDetails();
+        }
     </script>
 </body>
 </html>

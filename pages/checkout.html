@@ -290,11 +290,11 @@
                     }
 
                     try {
-                        auth.register(firstName, lastName, age, email, phone, password);
+                        await auth.register(firstName, lastName, age, email, phone, password);
                         showNotification('Account created. Continuing checkout...', 'success');
                         updateNav();
                     } catch (err) {
-                        errorEl.textContent = err.message;
+                        errorEl.textContent = err.message || 'Registration failed';
                         errorEl.style.display = 'block';
                         return;
                     }

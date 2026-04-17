@@ -2,159 +2,85 @@
 // HersStep - Main Application Data & State
 // ========================================
 
-// Mock Data Store
-const store = {
-    products: [
-        {
-            id: 1,
-            name: 'Classic Red Heels',
-            category: 'Heels',
-            price: 89.99,
-            description: 'Elegant red heels perfect for special occasions',
-            rating: 4.5,
-            stock: 15,
-            image: '👠'
-        },
-        {
-            id: 2,
-            name: 'Comfortable Flats',
-            category: 'Flats',
-            price: 59.99,
-            description: 'All-day comfort with stylish design',
-            rating: 4.3,
-            stock: 25,
-            image: '🥿'
-        },
-        {
-            id: 3,
-            name: 'Sporty Sneakers',
-            category: 'Sneakers',
-            price: 79.99,
-            description: 'Perfect blend of style and comfort',
-            rating: 4.7,
-            stock: 30,
-            image: '👟'
-        },
-        {
-            id: 4,
-            name: 'Elegant Sandals',
-            category: 'Sandals',
-            price: 69.99,
-            description: 'Summer-ready elegant sandals',
-            rating: 4.2,
-            stock: 20,
-            image: '👡'
-        },
-        {
-            id: 5,
-            name: 'Professional Pumps',
-            category: 'Heels',
-            price: 99.99,
-            description: 'Classic pumps for the modern professional',
-            rating: 4.6,
-            stock: 12,
-            image: '👠'
-        },
-        {
-            id: 6,
-            name: 'Casual Loafers',
-            category: 'Flats',
-            price: 64.99,
-            description: 'Effortless style for everyday wear',
-            rating: 4.4,
-            stock: 18,
-            image: '🥿'
-        }
-    ],
-    users: [
-        {
-            id: 1,
-            firstName: 'Admin',
-            lastName: 'User',
-            age: 30,
-            email: 'admin@hersstep.com',
-            phone: '+1-555-0001',
-            password: 'admin123',
-            role: 'admin',
-            active: true,
-            createdAt: new Date().toISOString()
-        },
-        {
-            id: 2,
-            firstName: 'Staff',
-            lastName: 'Member',
-            age: 25,
-            email: 'staff@hersstep.com',
-            phone: '+1-555-0002',
-            password: 'staff123',
-            role: 'staff',
-            active: true,
-            createdAt: new Date().toISOString()
-        },
-        {
-            id: 3,
-            firstName: 'John',
-            lastName: 'Doe',
-            age: 28,
-            email: 'customer@example.com',
-            phone: '+1-555-0003',
-            password: 'customer123',
-            role: 'customer',
-            active: true,
-            createdAt: new Date().toISOString()
-        }
-    ],
-    currentUser: null,
-    cart: [],
-    orders: [],
-    promoCodes: {
-        'WELCOME10': { type: 'percent', value: 10 },
-        'SAVE20': { type: 'percent', value: 20 },
-        'FLAT15': { type: 'fixed', value: 15 },
-        'TEST50': { type: 'percent', value: 50 }
+// Robust Response.json: return null for empty/non-JSON bodies to avoid parse errors
+(function() {
+    if (typeof Response !== 'undefined' && Response.prototype && !Response.prototype._safeJsonPatched) {
+        Response.prototype._safeJsonPatched = true;
+        const origJson = Response.prototype.json;
+        Response.prototype.json = async function() {
+            try {
+                // use a clone so we don't consume the original body stream
+                const clone = this.clone();
+                const txt = await clone.text();
+                if (!txt) return null;
+                return JSON.parse(txt);
+            } catch (e) {
+                try { return await origJson.call(this); } catch (_) { return null; }
+            }
+        };
     }
-};
+})();
+
+// Helper to extract an error message from a possibly-null parsed JSON response
+function extractError(data, fallback) {
+    if (data && typeof data === 'object') {
+        if (typeof data.error === 'string' && data.error) return data.error;
+        if (typeof data.message === 'string' && data.message) return data.message;
+        // sometimes APIs return { errors: ['msg'] }
+        if (Array.isArray(data.errors) && data.errors.length) return String(data.errors[0]);
+    }
+    return fallback || 'Request failed';
+}
 
 // User Management
 const auth = {
-    register: function(firstName, lastName, age, email, phone, password, role = 'customer') {
-        // Check for duplicate email or phone
-        const existingUser = store.users.find(u => 
-            u.email === email || (phone && u.phone === phone)
-        );
-        
-        if (existingUser) {
-            throw new Error('Account with this email/phone number already exists');
-        }
-        
-        const newUser = {
-            id: store.users.length + 1,
-            firstName,
-            lastName,
-            age,
-            email,
-            phone,
-            password, // In production, this would be hashed
-            role,
-            createdAt: new Date().toISOString()
-        };
-        
-        store.users.push(newUser);
-        store.currentUser = newUser;
+    register: async function(firstName, lastName, age, email, phone, password, role = 'customer') {
+        const payload = { firstName, lastName, age, email, phone, password, role };
+        const res = await fetch((window.API_BASE || '') + '/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(extractError(data, 'Registration failed'));
+        // update local cache
+        store.users = store.users || [];
+        store.users.push(data);
+        store.currentUser = data;
         this.saveSession();
-        return newUser;
+        return data;
     },
     
-    login: function(email, password) {
-        const user = store.users.find(u => u.email === email && u.password === password);
-        
-        if (!user) {
-            throw new Error('Invalid email or password');
+    login: async function(email, password) {
+        // Normalize and trim inputs to avoid whitespace/case issues
+        const emailClean = String(email || '').trim().toLowerCase();
+        const passClean = String(password || '');
+        console.debug('auth.login: sending', { email: emailClean, passwordLen: passClean.length });
+        const res = await fetch((window.API_BASE || '') + '/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: emailClean, password: passClean })
+        });
+        // Log raw response for debugging (use clone so we can still parse)
+        try {
+            const clone = res.clone();
+            const txt = await clone.text();
+            console.debug('auth.login response', { status: res.status, ok: res.ok, body: txt });
+        } catch (e) {
+            console.debug('auth.login response: failed to read body', e && e.message);
         }
-        
-        store.currentUser = user;
+        const data = await res.json();
+        if (!res.ok) {
+            console.debug('auth.login error data', data);
+            throw new Error(extractError(data, 'Invalid email or password'));
+        }
+        store.currentUser = data;
+        // cache user locally (without password)
+        store.users = store.users || [];
+        const existing = store.users.find(u => Number(u.id) === Number(data.id));
+        if (!existing) store.users.push(data);
         this.saveSession();
-        return user;
+        return data;
     },
     
     logout: function() {
@@ -181,24 +107,34 @@ const auth = {
     },
     
     updateProfile: function(updates) {
+        // updated to call server
         if (!store.currentUser) return false;
-        
-        const userIndex = store.users.findIndex(u => u.id === store.currentUser.id);
-        if (userIndex === -1) return false;
-        
-        store.users[userIndex] = { ...store.users[userIndex], ...updates };
-        store.currentUser = store.users[userIndex];
-        this.saveSession();
-        return true;
+        return fetch((window.API_BASE || '') + '/api/users/' + store.currentUser.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        }).then(r => r.json()).then(data => {
+            if (data && !data.error) {
+                const userIndex = store.users.findIndex(u => u.id === store.currentUser.id);
+                if (userIndex !== -1) store.users[userIndex] = data;
+                store.currentUser = data;
+                this.saveSession();
+                return true;
+            }
+            return false;
+        }).catch(() => false);
     },
     
     resetPassword: function(email) {
-        const user = store.users.find(u => u.email === email);
-        if (!user) {
-            throw new Error('No account found with this email');
-        }
-        // In production, this would send an email
-        return true;
+        // Call server-side reset endpoint (mock)
+        return fetch((window.API_BASE || '') + '/api/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        }).then(r => r.json()).then(data => {
+            if (data && !data.error) return true;
+            throw new Error(extractError(data, 'Reset failed'));
+        });
     }
 };
 
@@ -276,36 +212,34 @@ const cart = {
 
 // Order Management
 const orders = {
-    place: function(orderData) {
-        const newOrder = {
-            id: 'ORD-' + Date.now(),
-            userId: store.currentUser.id,
-            items: [...store.cart],
+    place: async function(orderData) {
+        const payload = {
+            userId: store.currentUser ? store.currentUser.id : null,
+            items: store.cart.map(i => ({ id: i.id, quantity: i.quantity })),
             total: orderData.total,
             discount: orderData.discount || 0,
             paymentMethod: orderData.paymentMethod,
-            status: 'placed',
-            shippingAddress: orderData.shippingAddress,
-            createdAt: new Date().toISOString()
+            shippingAddress: orderData.shippingAddress
         };
-        
-        // Update stock
-        newOrder.items.forEach(item => {
-            const product = store.products.find(p => p.id === item.id);
-            if (product) {
-                product.stock -= item.quantity;
-            }
+
+        const res = await fetch((window.API_BASE || '') + '/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
-        // persist updated product stock
-        if (typeof products !== 'undefined' && typeof products.saveProducts === 'function') {
-            products.saveProducts();
+        const data = await res.json();
+        if (!res.ok) throw new Error(extractError(data, 'Failed to place order'));
+
+        // Server returned newOrder and already decremented stock in DB.
+        store.orders.push(data);
+        // Refresh local product list (to pick up updated stock)
+        if (typeof products !== 'undefined' && typeof products.loadProducts === 'function') {
+            await products.loadProducts();
         }
 
-        store.orders.push(newOrder);
-        // persist orders so confirmation page can read them after redirect
         if (typeof this.saveOrders === 'function') this.saveOrders();
         cart.clear();
-        return newOrder;
+        return data;
     },
     
     getUserOrders: function() {
@@ -345,23 +279,38 @@ const orders = {
     }
     ,
     saveOrders: function() {
-        try {
-            localStorage.setItem('hersstep_orders', JSON.stringify(store.orders));
-        } catch (e) {
-            // ignore storage errors
+        // Try server persistence; fallback to localStorage
+        if (window.fetch) {
+            fetch((window.API_BASE || '') + '/api/orders', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(store.orders)
+            }).catch(() => {
+                try { localStorage.setItem('hersstep_orders', JSON.stringify(store.orders)); } catch (e) {}
+            });
+        } else {
+            try { localStorage.setItem('hersstep_orders', JSON.stringify(store.orders)); } catch (e) {}
         }
     },
     loadOrders: function() {
+        // Load from localStorage immediately
         try {
             const saved = localStorage.getItem('hersstep_orders');
-            if (saved) {
-                store.orders = JSON.parse(saved);
-            } else {
-                store.orders = [];
-            }
+            if (saved) store.orders = JSON.parse(saved);
         } catch (e) {
             store.orders = [];
         }
+        // Fetch from server to refresh
+        if (window.fetch) {
+            return fetch((window.API_BASE || '') + '/api/orders')
+                .then(r => r.json())
+                .then(data => {
+                    if (Array.isArray(data)) store.orders = data;
+                    if (typeof renderOrders === 'function') try { renderOrders(); } catch (e) {}
+                    return store.orders;
+                }).catch(() => store.orders || []);
+        }
+        return Promise.resolve(store.orders || []);
     }
 };
 
@@ -375,64 +324,53 @@ const products = {
         return store.products.find(p => p.id === Number(id));
     },
 
-    add: function(productData) {
-        const nextId = store.products.reduce((m, p) => Math.max(m, Number(p.id) || 0), 0) + 1;
-        // Price: parse, clamp to >=0 and round to 2 decimals
-        const rawPrice = parseFloat(productData.price);
-        const priceVal = isNaN(rawPrice) ? 0 : Math.max(0, Math.round(rawPrice * 100) / 100);
-        // Stock: integer >= 0
-        const rawStock = parseInt(productData.stock, 10);
-        const stockVal = isNaN(rawStock) ? 0 : Math.max(0, rawStock);
-        // Rating: clamp to [0,5] and round to 1 decimal
-        const rawRating = (productData.rating !== undefined && productData.rating !== null && productData.rating !== '') ? parseFloat(productData.rating) : 0;
-        const ratingVal = isNaN(rawRating) ? 0 : Math.round(Math.max(0, Math.min(5, rawRating)) * 10) / 10;
-
-        const newProduct = {
-            id: nextId,
-            name: productData.name || 'Untitled',
-            category: productData.category || 'Uncategorized',
-            price: priceVal,
+    add: async function(productData) {
+        const payload = {
+            name: productData.name,
+            model: productData.model,
+            color: productData.color,
+            price: Number(productData.price) || 0,
             description: productData.description || '',
-            rating: ratingVal,
-            stock: stockVal,
-            image: productData.image || '👟'
+            stock: Number(productData.stock) || 0,
+            image: productData.image || ''
         };
-        store.products.push(newProduct);
+        const res = await fetch((window.API_BASE || '') + '/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(extractError(data, 'Failed to add product'));
+        store.products.push(data);
         if (typeof this.saveProducts === 'function') this.saveProducts();
-        return newProduct;
+        return data;
     },
 
-    update: function(id, updates) {
-        const product = store.products.find(p => p.id === Number(id));
-        if (product) {
-            if (updates.price !== undefined) {
-                const rp = parseFloat(updates.price);
-                updates.price = isNaN(rp) ? 0 : Math.max(0, Math.round(rp * 100) / 100);
-            }
-            if (updates.stock !== undefined) {
-                const rs = parseInt(updates.stock, 10);
-                updates.stock = isNaN(rs) ? 0 : Math.max(0, rs);
-            }
-            if (updates.rating !== undefined) {
-                const rv = parseFloat(updates.rating);
-                const rvClamped = isNaN(rv) ? 0 : Math.max(0, Math.min(5, rv));
-                updates.rating = Math.round(rvClamped * 10) / 10;
-            }
-            Object.assign(product, updates);
-            if (typeof this.saveProducts === 'function') this.saveProducts();
-            return true;
-        }
-        return false;
+    update: async function(id, updates) {
+        const payload = { ...updates };
+        if (payload.price !== undefined) payload.price = Number(payload.price) || 0;
+        if (payload.stock !== undefined) payload.stock = Number(payload.stock) || 0;
+        const res = await fetch((window.API_BASE || '') + '/api/products/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) return false;
+        const idx = store.products.findIndex(p => Number(p.id) === Number(id));
+        if (idx !== -1) store.products[idx] = data;
+        if (typeof this.saveProducts === 'function') this.saveProducts();
+        return true;
     },
 
-    remove: function(id) {
+    remove: async function(id) {
+        const res = await fetch((window.API_BASE || '') + '/api/products/' + id, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) return false;
         const index = store.products.findIndex(p => p.id === Number(id));
-        if (index !== -1) {
-            store.products.splice(index, 1);
-            if (typeof this.saveProducts === 'function') this.saveProducts();
-            return true;
-        }
-        return false;
+        if (index !== -1) store.products.splice(index, 1);
+        if (typeof this.saveProducts === 'function') this.saveProducts();
+        return true;
     },
 
     validate: function(productData, excludeId) {
@@ -442,8 +380,12 @@ const products = {
             errors.push('Product name is required');
         }
 
-        if (!productData.category || productData.category.trim() === '') {
-            errors.push('Category is required');
+        if (!productData.model || productData.model.trim() === '') {
+            errors.push('Model is required');
+        }
+
+        if (!productData.color || productData.color.trim() === '') {
+            errors.push('Color is required');
         }
 
         // Price must be numeric and non-negative
@@ -454,8 +396,6 @@ const products = {
         if (!productData.description || productData.description.trim() === '') {
             errors.push('Description is required');
         }
-
-        // Rating is clamped automatically on add/update; no validation error produced here.
 
         // Stock should not be negative
         if (productData.stock !== undefined && (isNaN(Number(productData.stock)) || Number(productData.stock) < 0)) {
@@ -475,25 +415,56 @@ const products = {
     },
 
     saveProducts: function() {
-        try {
-            localStorage.setItem('hersstep_products', JSON.stringify(store.products));
-        } catch (e) {
-            // ignore storage errors
+        // Attempt to persist to server; fallback to localStorage
+        if (window.fetch) {
+            fetch((window.API_BASE || '') + '/api/products', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(store.products)
+            }).catch(() => {
+                try { localStorage.setItem('hersstep_products', JSON.stringify(store.products)); } catch (e) {}
+            });
+        } else {
+            try { localStorage.setItem('hersstep_products', JSON.stringify(store.products)); } catch (e) {}
         }
     },
 
     loadProducts: function() {
+        // Load from localStorage immediately if present
         try {
             const saved = localStorage.getItem('hersstep_products');
             if (saved) {
                 store.products = JSON.parse(saved);
-            } else {
-                // initialize storage with defaults
-                this.saveProducts();
             }
         } catch (e) {
-            // ignore parse errors
+            // ignore
         }
+
+        // Try fetching from server and override when available
+        if (window.fetch) {
+            return fetch((window.API_BASE || '') + '/api/products')
+                .then(r => r.json())
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        // ensure compatibility: if items use 'category', map to 'model'
+                        store.products = data.map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            model: p.model || p.category || 'Unspecified',
+                            color: p.color || 'Unknown',
+                            price: Number(p.price) || 0,
+                            description: p.description || '',
+                            stock: Number(p.stock) || 0,
+                            image: p.image || 'https://via.placeholder.com/300x200?text=Product'
+                        }));
+                        // If page has render helpers, call them
+                        if (typeof populateCategories === 'function') try { populateCategories(); } catch (e) {}
+                        if (typeof renderProducts === 'function') try { renderProducts(); } catch (e) {}
+                    }
+                    return data;
+                }).catch(() => []);
+        }
+        return Promise.resolve(store.products || []);
     }
 };
 
@@ -533,9 +504,11 @@ function updateNav() {
                 roleLinks = `<a href="${prefix}staff-dashboard.html">Dashboard</a>`;
             }
 
+            // Show Orders link only for non-staff users
+            const ordersLink = user.role === 'staff' ? '' : `<a href="${prefix}orders.html">Orders</a>`;
             authLinks.innerHTML = `
                 <a href="${prefix}profile.html">${user.firstName}</a>
-                <a href="${prefix}orders.html">Orders</a>
+                ${ordersLink}
                 ${roleLinks}
                 <a href="#" onclick="auth.logout(); return false;">Logout</a>
             `;
@@ -545,6 +518,15 @@ function updateNav() {
                 <a href="${prefix}signup.html">Sign Up</a>
             `;
         }
+    }
+
+    // If a staff user is signed in, hide public Shop links to avoid showing storefront
+    const curUser = store.currentUser;
+    if (curUser && curUser.role === 'staff') {
+        document.querySelectorAll('a[href*="products.html"]').forEach(a => {
+            const li = a.closest('li');
+            if (li) li.style.display = 'none'; else a.style.display = 'none';
+        });
     }
 }
 
@@ -566,6 +548,15 @@ function formatCurrency(amount) {
 }
 
 // Preload session and cart immediately so inline page scripts can read store state
+// Expose key modules on the window so inline page scripts (login/signup) can access them
+window.store = store;
+window.auth = auth;
+window.products = products;
+window.cart = cart;
+window.orders = orders;
+window.showNotification = showNotification;
+window.formatCurrency = formatCurrency;
+
 auth.loadSession();
 // Load persisted products (if any)
 if (typeof products !== 'undefined' && typeof products.loadProducts === 'function') products.loadProducts();

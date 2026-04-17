@@ -159,7 +159,11 @@
             }
         }
         
-        renderOrders();
+        if (typeof orders !== 'undefined' && typeof orders.loadOrders === 'function') {
+            orders.loadOrders().then(() => renderOrders()).catch(() => renderOrders());
+        } else {
+            renderOrders();
+        }
     </script>
 </body>
 </html>

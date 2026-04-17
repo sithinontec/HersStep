@@ -219,7 +219,11 @@
             }
         }
         
-        loadOrderDetails();
+        if (typeof orders !== 'undefined' && typeof orders.loadOrders === 'function') {
+            orders.loadOrders().then(() => loadOrderDetails()).catch(() => loadOrderDetails());
+        } else {
+            loadOrderDetails();
+        }
     </script>
 </body>
 </html>

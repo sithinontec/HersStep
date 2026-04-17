@@ -46,7 +46,7 @@ A logged-in staff member adds, edits, or removes products.
 | Step | Action |
 |------|--------|
 | 1 | Staff clicks **Add** (new product) or **Modify** (existing product). |
-| 2 | Staff fills in or updates: name, category, price, description. |
+| 2 | Staff fills in or updates: name, model, color, price, description. |
 | 3 | Staff clicks **Save**. |
 | 4 | System validates all fields. |
 | 5 | System saves the product; it immediately appears on the storefront. |
@@ -83,8 +83,8 @@ Tester tests **only** the items in this checklist. Items marked **`[OUT OF SCOPE
 | ID | What to test |
 |----|-------------|
 | C-07 | Customer can browse a product listing page. |
-| C-08 | Customer can filter products by category, price, and rating. |
-| C-09 | Customer can sort products by category, price, and rating. |
+| C-08 | Customer can filter products by model, color, and price. |
+| C-09 | Customer can sort products by model, color, and price. |
 | C-10 | Customer can add a product to the cart. |
 | C-11 | Customer can increase or decrease item quantity in the cart. |
 | C-12 | Customer can remove an item from the cart. |
@@ -126,7 +126,7 @@ Tester tests **only** the items in this checklist. Items marked **`[OUT OF SCOPE
 | ID | What to test |
 |----|-------------|
 | S-01 | Staff can log in with staff credentials. |
-| S-02 | Staff can add a new product (name, category, price, description). |
+| S-02 | Staff can add a new product (name, model, color, price, description). |
 | S-03 | Staff can update an existing product's details. |
 | S-04 | Staff can remove a product. |
 | S-05 | Staff can update the stock level for a product. |

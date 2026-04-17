@@ -49,6 +49,7 @@
 
         const list = document.getElementById('orders-list');
 
+        // Render orders from store.orders
         function renderOrders() {
             if (!list) return;
             const arr = (store.orders || []).slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -60,7 +61,7 @@
             list.innerHTML = arr.map(o => `
                 <div style="border-bottom:1px solid #eee; padding:0.5rem 0;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div><strong>${o.id}</strong> — ${new Date(o.createdAt).toLocaleString()}</div>
+                        <div><strong>${o.id}</strong> — ${o.createdAt ? new Date(o.createdAt).toLocaleString() : '—'}</div>
                         <div>
                             <select onchange="changeOrderStatus('${o.id}', this.value)">
                                 <option value="placed" ${o.status==='placed' ? 'selected' : ''}>Placed</option>
@@ -71,14 +72,48 @@
                             </select>
                         </div>
                     </div>
-                    <div style="margin-top:0.5rem;">Items: ${o.items.map(i => i.name + ' x' + i.quantity).join(', ')}</div>
-                    <div>Total: ${formatCurrency(o.total)}</div>
+                    <div style="margin-top:0.5rem;">Items: ${o.items && o.items.length ? o.items.map(i => i.name + ' x' + i.quantity).join(', ') : '—'}</div>
+                    <div>Total: ${formatCurrency(o.total || 0)}</div>
                     <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
                         <a class="btn btn-secondary" href="order-details.html?orderId=${o.id}">View</a>
                         ${o.status !== 'cancelled' ? `<button class="btn btn-danger" onclick="cancelOrder('${o.id}')">Cancel</button>` : ''}
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Fetch orders from API and populate store.orders
+        async function fetchOrdersFromApi() {
+            try {
+                const res = await fetch((window.API_BASE || '') + '/api/orders');
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    store.orders = data;
+                    renderOrders();
+                } else {
+                    list.textContent = 'Failed to load orders';
+                }
+            } catch (err) {
+                console.error('Failed to fetch orders', err);
+                list.textContent = 'Failed to load orders';
+            }
+        }
+
+        // Save current store.orders array to API (PUT /api/orders)
+        async function saveOrdersToApi() {
+            try {
+                await fetch((window.API_BASE || '') + '/api/orders', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(store.orders || [])
+                });
+                // refresh from API to pick up any server-side transformations
+                await fetchOrdersFromApi();
+                return true;
+            } catch (err) {
+                console.error('Failed to save orders', err);
+                return false;
+            }
         }
 
         window.changeOrderStatus = function(orderId, status) {
@@ -88,17 +123,26 @@
                     renderOrders();
                     return;
                 }
+                // update locally
                 const ok = orders.cancel(orderId);
-                if (ok) showNotification('Order cancelled', 'success');
-                else showNotification('Failed to cancel order', 'error');
+                if (ok) {
+                    showNotification('Order cancelled', 'success');
+                    saveOrdersToApi();
+                } else {
+                    showNotification('Failed to cancel order', 'error');
+                }
             } else {
                 if (!confirm('Change order status to "' + status + '"?')) {
                     renderOrders();
                     return;
                 }
                 const ok = orders.updateStatus(orderId, status);
-                if (ok) showNotification('Order status updated', 'success');
-                else showNotification('Failed to update status', 'error');
+                if (ok) {
+                    showNotification('Order status updated', 'success');
+                    saveOrdersToApi();
+                } else {
+                    showNotification('Failed to update status', 'error');
+                }
             }
             renderOrders();
         };
@@ -109,14 +153,14 @@
             const ok = orders.cancel(orderId);
             if (ok) {
                 showNotification('Order cancelled', 'success');
-                renderOrders();
+                saveOrdersToApi();
             } else {
                 showNotification('Failed to cancel order', 'error');
             }
         };
 
-        // Initial render
-        renderOrders();
+        // Initial load from API
+        fetchOrdersFromApi();
     </script>
 </body>
 </html>

@@ -83,12 +83,12 @@
             return pending;
         }
 
-        document.getElementById('simulate-success').addEventListener('click', function() {
+        document.getElementById('simulate-success').addEventListener('click', async function() {
             const pending = renderPending();
             const msg = document.getElementById('sim-message');
             if (!pending) return;
             try {
-                const newOrder = orders.place(pending);
+                const newOrder = await orders.place(pending);
                 localStorage.removeItem('hersstep_pendingOrder');
                 msg.innerHTML = '<div style="color:var(--success-color);">Payment successful — order completed.</div>';
                 setTimeout(() => {

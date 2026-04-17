@@ -99,27 +99,27 @@
 
     <script src="../js/app.js"></script>
     <script>
-        document.getElementById('signup-form').addEventListener('submit', function(e) {
+        document.getElementById('signup-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const firstName = document.getElementById('firstName').value.trim();
             const lastName = document.getElementById('lastName').value.trim();
             const age = parseInt(document.getElementById('age').value);
             const email = document.getElementById('email').value.trim();
             const phone = document.getElementById('phone').value.trim();
             const password = document.getElementById('password').value;
-            
+
             const errorEl = document.getElementById('error-message');
             errorEl.style.display = 'none';
-            
+
             try {
-                auth.register(firstName, lastName, age, email, phone || null, password);
+                await auth.register(firstName, lastName, age, email, phone || null, password);
                 showNotification('Account created successfully!', 'success');
                 setTimeout(() => {
                     window.location.href = 'products.html';
                 }, 1000);
             } catch (error) {
-                errorEl.textContent = error.message;
+                errorEl.textContent = error.message || 'Registration failed';
                 errorEl.style.display = 'block';
             }
         });

@@ -1,4 +1,4 @@
-# HersStep Online Shop - Prototype
+# HerStep Online Shop - Prototype
 
 A fully functional e-commerce website prototype for women's footwear. This repo contains a client-side, static prototype (no backend) used for testing UI flows, checkout, promo codes, and order persistence via browser storage.
 
@@ -6,20 +6,26 @@ A fully functional e-commerce website prototype for women's footwear. This repo 
 
 ### Opening the Prototype
 
-Simply open `index.html` in your web browser to start using the prototype. No server setup required!
+You can run the prototype in two modes.
+
+- Quick (file): open `index.html` directly in your browser (basic UI only).
+- Recommended (server): run the bundled API + static server so the catalog and orders persist to a JSON database.
+
+To run the API + static server:
 
 ```bash
-# Option 1: Direct file access
-# Open: c:\Users\sithi\OneDrive\Desktop\HersStep\index.html
-
-# Option 2: Using a local server (recommended for full functionality)
-# In VS Code, right-click index.html and select "Open with Live Server"
+cd server
+npm install
+npm start
+# Then open http://localhost:3000 in your browser
 ```
+
+Serving via the included server ensures frontend calls to `/api/*` work and data is persisted in `server/db.json`.
 
 ## 👤 Test Accounts
 
 ### Customer Account
-- **Email:** customer@example.com
+- **Email:** customer@hersstep.com
 - **Password:** customer123
 
 ### Staff Account

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - HersStep</title>
+    <title>Login - HerStep</title>
     <link rel="stylesheet" href="../css/styles.css">
     <link rel="stylesheet" href="../css/auth.css">
 </head>
@@ -14,7 +14,7 @@
             <span>Contact: support@hersstep.com</span>
         </div>
         <nav class="nav-container">
-            <a href="index.html" class="logo">HersStep</a>
+            <a href="index.html" class="logo">HerStep</a>
             <ul class="nav-menu">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="products.html">Shop</a></li>
@@ -63,7 +63,7 @@
     <footer>
         <div class="footer-content">
             <div class="footer-section">
-                <h3>About HersStep</h3>
+                <h3>About HerStep</h3>
                 <p>Your destination for stylish and comfortable women's footwear.</p>
             </div>
             <div class="footer-section">
@@ -86,23 +86,26 @@
 
     <script src="../js/app.js"></script>
     <script>
-        document.getElementById('login-form').addEventListener('submit', function(e) {
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-            
+
             const errorEl = document.getElementById('error-message');
             errorEl.style.display = 'none';
-            
+
+            console.debug('login form submit', { email });
             try {
-                auth.login(email, password);
+                await auth.login(email, password);
+                console.debug('login succeeded for', email);
                 showNotification('Login successful!', 'success');
                 setTimeout(() => {
                     window.location.href = 'products.html';
                 }, 1000);
             } catch (error) {
-                errorEl.textContent = error.message;
+                console.error('login error', error);
+                errorEl.textContent = (error && error.message) ? error.message : 'Login failed';
                 errorEl.style.display = 'block';
             }
         });

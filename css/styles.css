@@ -9,9 +9,9 @@
 }
 
 :root {
-    --primary-color: #e91e63;
-    --primary-dark: #c2185b;
-    --secondary-color: #f8bbd9;
+    --primary-color: #0a3d62;
+    --primary-dark: #06283d;
+    --secondary-color: #d9e6f2;
     --text-dark: #333;
     --text-light: #666;
     --white: #fff;
@@ -217,13 +217,15 @@ main {
 .card-img {
     width: 100%;
     height: 250px;
-    object-fit: cover;
     background-color: var(--light-gray);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-light);
-    font-size: 3rem;
+    overflow: hidden;
+}
+
+.card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .card-body {

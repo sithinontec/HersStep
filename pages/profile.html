@@ -95,9 +95,9 @@
             document.getElementById('phone').value = store.currentUser.phone || '';
         }
         
-        document.getElementById('profile-form').addEventListener('submit', function(e) {
+        document.getElementById('profile-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const updates = {
                 firstName: document.getElementById('firstName').value.trim(),
                 lastName: document.getElementById('lastName').value.trim(),
@@ -105,14 +105,18 @@
                 email: document.getElementById('email').value.trim(),
                 phone: document.getElementById('phone').value.trim()
             };
-            
+
             const messageEl = document.getElementById('message');
-            
-            if (auth.updateProfile(updates)) {
-                messageEl.innerHTML = '<span style="color: var(--success-color);">Profile updated successfully!</span>';
-                showNotification('Profile updated!', 'success');
-            } else {
-                messageEl.innerHTML = '<span class="error-message">Failed to update profile</span>';
+            try {
+                const ok = await auth.updateProfile(updates);
+                if (ok) {
+                    messageEl.innerHTML = '<span style="color: var(--success-color);">Profile updated successfully!</span>';
+                    showNotification('Profile updated!', 'success');
+                } else {
+                    messageEl.innerHTML = '<span class="error-message">Failed to update profile</span>';
+                }
+            } catch (e) {
+                messageEl.innerHTML = '<span class="error-message">' + (e.message || 'Failed to update profile') + '</span>';
             }
         });
         

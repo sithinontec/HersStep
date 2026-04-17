@@ -37,13 +37,9 @@
             <div class="filter-section">
                 <div class="filter-grid">
                     <div class="form-group">
-                        <label for="category-filter">Category</label>
-                        <select id="category-filter" class="form-control">
-                            <option value="">All Categories</option>
-                            <option value="Heels">Heels</option>
-                            <option value="Flats">Flats</option>
-                            <option value="Sneakers">Sneakers</option>
-                            <option value="Sandals">Sandals</option>
+                        <label for="model-filter">Model</label>
+                        <select id="model-filter" class="form-control">
+                            <option value="">All Models</option>
                         </select>
                     </div>
                     
@@ -64,7 +60,8 @@
                             <option value="name">Name</option>
                             <option value="price-low">Price: Low to High</option>
                             <option value="price-high">Price: High to Low</option>
-                            <option value="rating">Rating</option>
+                            <option value="model">Model</option>
+                            <option value="color">Color</option>
                         </select>
                     </div>
                     
@@ -117,17 +114,15 @@
                 container.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No products found.</p>';
                 return;
             }
-            
+
             container.innerHTML = filteredProducts.map(product => `
                 <div class="card">
-                    <div class="card-img">${product.image}</div>
+                    <div class="card-img"><img src="${product.image}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;"></div>
                     <div class="card-body">
-                        <h3 class="card-title">${product.name}</h3>
+                        <h3 class="card-title">${product.name} <small style="color:#666;font-weight:400;">#${product.id}</small></h3>
                         <p class="card-text">${product.description}</p>
                         <div class="card-price">${formatCurrency(product.price)}</div>
-                        <div style="margin-bottom: 1rem; color: var(--text-light);">
-                            ⭐ ${product.rating} (${product.stock} in stock)
-                        </div>
+                        <div style="margin-bottom: 1rem; color: var(--text-light);">Model: ${product.model} · Color: ${product.color} · (${product.stock} in stock)</div>
                         <button class="btn btn-primary" onclick="addToCart(${product.id})" ${product.stock === 0 ? 'disabled' : ''}>
                             ${product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
                         </button>
@@ -137,14 +132,14 @@
         }
         
         function filterProducts() {
-            const category = document.getElementById('category-filter').value;
+            const category = document.getElementById('model-filter').value;
             const priceRange = document.getElementById('price-filter').value;
             const sortBy = document.getElementById('sort-by').value;
             const searchTerm = document.getElementById('search').value.toLowerCase();
             
             filteredProducts = store.products.filter(product => {
-                // Category filter
-                if (category && product.category !== category) return false;
+                // Model filter
+                if (category && product.model !== category) return false;
                 
                 // Price filter
                 if (priceRange) {
@@ -172,8 +167,11 @@
                 case 'price-high':
                     filteredProducts.sort((a, b) => b.price - a.price);
                     break;
-                case 'rating':
-                    filteredProducts.sort((a, b) => b.rating - a.rating);
+                case 'model':
+                    filteredProducts.sort((a, b) => (a.model || '').localeCompare(b.model || ''));
+                    break;
+                case 'color':
+                    filteredProducts.sort((a, b) => (a.color || '').localeCompare(b.color || ''));
                     break;
             }
             
@@ -189,11 +187,19 @@
         }
         
         // Event listeners
-        document.getElementById('category-filter').addEventListener('change', filterProducts);
+        document.getElementById('model-filter').addEventListener('change', filterProducts);
         document.getElementById('price-filter').addEventListener('change', filterProducts);
         document.getElementById('sort-by').addEventListener('change', filterProducts);
         document.getElementById('search').addEventListener('input', filterProducts);
         
+        // Populate model filter from available products
+        (function populateModelFilter(){
+            const sel = document.getElementById('model-filter');
+            if (!sel) return;
+            const models = [...new Set(store.products.map(p => p.model))].sort();
+            sel.innerHTML = '<option value="">All Models</option>' + models.map(m => `<option value="${m}">${m}</option>`).join('');
+        })();
+
         // Initial render
         renderProducts();
     </script>
