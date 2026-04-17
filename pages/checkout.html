@@ -48,7 +48,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="zipCode">ZIP Code *</label>
-                                        <input type="text" id="zipCode" class="form-control" required>
+                                        <input type="number" id="zipCode" class="form-control" min="0" required>
                                     </div>
                                 </div>
                             </form>
@@ -100,43 +100,49 @@
                     <div class="card" style="margin-bottom: 2rem;">
                         <div class="card-body">
                             <h2 style="margin-bottom: 1rem;">Payment Method</h2>
-                            <div class="form-group">
-                                <label>
-                                    <input type="radio" name="paymentMethod" value="credit" checked> 
-                                    💳 Credit/Debit Card
-                                </label>
-                            </div>
-                            <div class="form-group">
-                                <label>
-                                    <input type="radio" name="paymentMethod" value="paypal"> 
-                                    🅿️ PayPal
-                                </label>
-                            </div>
-                            <div class="form-group">
-                                <label>
-                                    <input type="radio" name="paymentMethod" value="bank"> 
-                                    🏦 Bank Transfer
-                                </label>
-                            </div>
-                            
-                            <div id="card-details" style="margin-top: 1rem;">
-                                <div class="form-group">
-                                    <label for="cardNumber">Card Number</label>
-                                    <input type="text" id="cardNumber" class="form-control" placeholder="1234 5678 9012 3456">
-                                </div>
-                                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
-                                    <div class="form-group">
-                                        <label for="expiry">Expiry Date</label>
-                                        <input type="text" id="expiry" class="form-control" placeholder="MM/YY">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="cvv">CVV</label>
-                                        <input type="text" id="cvv" class="form-control" placeholder="123">
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="form-group">
+                            <label><input type="radio" name="paymentMethod" value="credit" checked> 💳 Credit/Debit Card</label>
+                        </div>
+                        <div class="form-group">
+                            <label><input type="radio" name="paymentMethod" value="paypal"> 🅿️ PayPal</label>
+                        </div>
+                        <div class="form-group">
+                            <label><input type="radio" name="paymentMethod" value="bank"> 🏦 Bank Transfer</label>
+                        </div>
+        
+                    <div id="card-details" class="payment-fields">
+                        <div class="form-group">
+                            <label for="cardNumber">Card Number *</label>
+                            <input type="text" id="cardNumber" class="form-control" placeholder="1234 5678 9012 3456">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+                            <div class="form-group"><label for="expiry">Expiry Date *</label><input type="text" id="expiry" class="form-control" placeholder="MM/YY"></div>
+                            <div class="form-group"><label for="cvv">CVV *</label><input type="text" id="cvv" class="form-control" placeholder="123"></div>
                         </div>
                     </div>
+
+                    <div id="paypal-details" class="payment-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="paypalEmail">PayPal Email *</label>
+                            <input type="email" id="paypalEmail" class="form-control" placeholder="email@example.com">
+                        </div>
+                    </div>
+
+                    <div id="bank-details" class="payment-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="accountName">Account Holder Name *</label>
+                            <input type="text" id="accountName" class="form-control">
+                        </div>
+                    <div class="form-group">
+                            <label for="accountNumber">Account Number *</label>
+                            <input type="text" id="accountNumber" class="form-control">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                     
                     <!-- Promo Code -->
                     <div class="card">
@@ -247,7 +253,7 @@
             }
         }
         
-        function placeOrder() {
+        async function placeOrder() {
             const errorEl = document.getElementById('error-message');
             errorEl.style.display = 'none';
 
@@ -315,6 +321,26 @@
             }
 
             const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+
+            if (paymentMethod === 'credit') {
+                if (!document.getElementById('cardNumber').value || !document.getElementById('expiry').value || !document.getElementById('cvv').value) {
+                    errorEl.textContent = 'Please fill in all card details';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+            } else if (paymentMethod === 'paypal') {
+                if (!document.getElementById('paypalEmail').value) {
+                    errorEl.textContent = 'Please enter your PayPal email';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+            } else if (paymentMethod === 'bank') {
+                if (!document.getElementById('accountName').value || !document.getElementById('accountNumber').value) {
+                    errorEl.textContent = 'Please enter bank account details';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+            }
             const subtotal = cart.getTotal();
             const shipping = subtotal >= 100 ? 0 : 9.99;
             const total = subtotal - discountAmount + shipping;
@@ -379,10 +405,15 @@
         })();
 
         // Payment method change handler
+        // Replace the current radio button listener in checkout.html
         document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
             radio.addEventListener('change', function() {
-                const cardDetails = document.getElementById('card-details');
-                cardDetails.style.display = this.value === 'credit' ? 'block' : 'none';
+        // Hide all extra fields
+                document.querySelectorAll('.payment-fields').forEach(el => el.style.display = 'none');
+        // Show specific fields
+                const detailsId = `${this.value}-details`;
+                const target = document.getElementById(detailsId);
+                if (target) target.style.display = 'block';
             });
         });
 
@@ -398,9 +429,14 @@
                 createAccountCard.style.display = 'none';
             }
         }
-
-        // Initialize
+        // Wait for the DOM and all scripts to be ready
+        document.addEventListener('DOMContentLoaded', () => {
+    // Re-verify cart is loaded
+        if (window.cart && typeof window.cart.loadCart === 'function') {
+            window.cart.loadCart();
+        }
         renderOrderSummary();
+        });
     </script>
 </body>
 </html>

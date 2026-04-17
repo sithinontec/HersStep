@@ -5,7 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - HerStep</title>
     <link rel="stylesheet" href="../css/styles.css">
-    <link rel="stylesheet" href="../css/auth.css">
+
+    <!-- Redirect immediately if already logged in — before any content renders.
+         Reads localStorage directly so it never depends on app.js loading first. -->
+    <script>
+        (function() {
+            try {
+                var raw  = localStorage.getItem('hersstep_currentUser');
+                var user = raw ? JSON.parse(raw) : null;
+                if (user && (user.id || user.email)) {
+                    // Already logged in — go to the pending destination or home
+                    var dest = localStorage.getItem('hersstep_redirect_after_login') || 'index.html';
+                    localStorage.removeItem('hersstep_redirect_after_login');
+                    window.location.replace(dest);
+                }
+            } catch (e) { /* not logged in, stay on this page */ }
+        })();
+    </script>
 </head>
 <body>
     <header>
@@ -18,44 +34,69 @@
             <ul class="nav-menu">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="products.html">Shop</a></li>
-                <li><a href="signup.html">Sign Up</a></li>
+                <li><a href="about.html">About</a></li>
+                <li class="auth-links">
+                    <!-- app.js updateNavAuth() will replace this on load -->
+                    <a href="login.html">Login</a>
+                    <a href="signup.html">Sign Up</a>
+                </li>
+                <li>
+                    <a href="cart.html" class="cart-icon">
+                        🛒
+                        <span class="cart-count"></span>
+                    </a>
+                </li>
             </ul>
         </nav>
     </header>
 
     <main>
-        <div class="auth-container">
-            <div class="auth-header">
-                <h1>Welcome Back</h1>
-                <p>Login to continue shopping</p>
-            </div>
+        <div class="container" style="max-width:480px; margin:4rem auto;">
+            <div class="card" style="padding:2.5rem;">
 
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" class="form-control" required>
+                <h1 style="text-align:center; margin-bottom:0.5rem;">Welcome Back</h1>
+                <p style="text-align:center; color:var(--text-light); margin-bottom:2rem;">
+                    Sign in to your HerStep account
+                </p>
+
+                <!-- Shown when redirected here from cart -->
+                <div id="checkout-notice"
+                     style="display:none; background:#fff3cd; border:1px solid #ffc107;
+                            border-radius:6px; padding:0.75rem 1rem; margin-bottom:1.5rem;
+                            color:#856404; font-size:0.95rem;">
+                    🔒 Please log in to proceed to checkout. Your cart is saved and waiting.
+                </div>
+
+                <!-- Error banner -->
+                <div id="login-error"
+                     style="display:none; background:#f8d7da; border:1px solid #f5c6cb;
+                            border-radius:6px; padding:0.75rem 1rem; margin-bottom:1rem;
+                            color:#721c24; font-size:0.95rem;">
                 </div>
 
                 <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" class="form-control"
+                           placeholder="you@example.com" autocomplete="email">
+                </div>
+
+                <div class="form-group" style="margin-top:1rem;">
                     <label for="password">Password</label>
-                    <input type="password" id="password" class="form-control" required>
+                    <input type="password" id="password" class="form-control"
+                           placeholder="Your password" autocomplete="current-password">
                 </div>
 
-                <div style="text-align: right; margin-bottom: 1rem;">
-                    <a href="forgot-password.html" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">Forgot Password?</a>
-                </div>
+                <button id="login-btn"
+                        class="btn btn-primary"
+                        style="width:100%; margin-top:1.5rem; padding:0.85rem;"
+                        onclick="window.handleLogin()">
+                    Sign In
+                </button>
 
-                <div id="error-message" class="error-message" style="display: none;"></div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
-            </form>
-
-            <div class="auth-divider">or</div>
-
-            <a href="signup.html" class="btn btn-secondary" style="width: 100%;">Create Account</a>
-
-            <div class="auth-footer">
-                Don't have an account? <a href="signup.html">Sign up here</a>
+                <p style="text-align:center; margin-top:1.5rem; color:var(--text-light);">
+                    Don't have an account?
+                    <a href="signup.html" style="color:var(--primary);">Sign Up</a>
+                </p>
             </div>
         </div>
     </main>
@@ -71,7 +112,6 @@
                 <ul>
                     <li><a href="index.html">Home</a></li>
                     <li><a href="products.html">Shop</a></li>
-                    <li><a href="signup.html">Sign Up</a></li>
                 </ul>
             </div>
             <div class="footer-section">
@@ -86,29 +126,60 @@
 
     <script src="../js/app.js"></script>
     <script>
-        document.getElementById('login-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
 
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
+        // Show the cart notice banner if user was sent here from cart
+        if (localStorage.getItem('hersstep_redirect_after_login') === 'checkout.html') {
+            document.getElementById('checkout-notice').style.display = 'block';
+        }
 
-            const errorEl = document.getElementById('error-message');
-            errorEl.style.display = 'none';
-
-            console.debug('login form submit', { email });
-            try {
-                await auth.login(email, password);
-                console.debug('login succeeded for', email);
-                showNotification('Login successful!', 'success');
-                setTimeout(() => {
-                    window.location.href = 'products.html';
-                }, 1000);
-            } catch (error) {
-                console.error('login error', error);
-                errorEl.textContent = (error && error.message) ? error.message : 'Login failed';
-                errorEl.style.display = 'block';
-            }
+        // Enter key on password field submits the form
+        document.getElementById('password').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') window.handleLogin();
         });
+
+        window.handleLogin = async function() {
+            var emailEl  = document.getElementById('email');
+            var passEl   = document.getElementById('password');
+            var errorBox = document.getElementById('login-error');
+            var btn      = document.getElementById('login-btn');
+
+            var email    = emailEl ? emailEl.value.trim() : '';
+            var password = passEl  ? passEl.value        : '';
+
+            errorBox.style.display = 'none';
+            errorBox.textContent   = '';
+
+            if (!email || !password) {
+                errorBox.textContent   = 'Please enter your email and password.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            if (!window.auth || typeof window.auth.login !== 'function') {
+                errorBox.textContent   = 'App failed to load. Please refresh the page.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            btn.disabled    = true;
+            btn.textContent = 'Signing in…';
+
+            try {
+                await window.auth.login(email, password);
+
+                // auth.login() → saveSession() → writes 'hersstep_currentUser' to localStorage
+                // cart is already intact in localStorage
+                var redirectTo = localStorage.getItem('hersstep_redirect_after_login') || 'index.html';
+                localStorage.removeItem('hersstep_redirect_after_login');
+                window.location.href = redirectTo;
+
+            } catch (err) {
+                errorBox.textContent   = (err && err.message) ? err.message : 'Invalid email or password.';
+                errorBox.style.display = 'block';
+                btn.disabled    = false;
+                btn.textContent = 'Sign In';
+            }
+        };
     </script>
 </body>
 </html>

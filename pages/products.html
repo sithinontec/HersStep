@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop - HersStep</title>
+    <title>Shop - HerStep</title>
     <link rel="stylesheet" href="../css/styles.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
             <span>Contact: support@hersstep.com</span>
         </div>
         <nav class="nav-container">
-            <a href="index.html" class="logo">HersStep</a>
+            <a href="index.html" class="logo">HerStep</a>
             <ul class="nav-menu">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="products.html">Shop</a></li>
@@ -32,7 +32,7 @@
     <main>
         <div class="container">
             <h1 style="margin-bottom: 2rem;">All Products</h1>
-            
+
             <!-- Filters -->
             <div class="filter-section">
                 <div class="filter-grid">
@@ -42,7 +42,7 @@
                             <option value="">All Models</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="price-filter">Price Range</label>
                         <select id="price-filter" class="form-control">
@@ -53,7 +53,7 @@
                             <option value="100+">$100+</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="sort-by">Sort By</label>
                         <select id="sort-by" class="form-control">
@@ -64,14 +64,14 @@
                             <option value="color">Color</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="search">Search</label>
                         <input type="text" id="search" class="form-control" placeholder="Search products...">
                     </div>
                 </div>
             </div>
-            
+
             <!-- Products Grid -->
             <div class="product-grid" id="products-container">
                 <!-- Products loaded dynamically -->
@@ -82,7 +82,7 @@
     <footer>
         <div class="footer-content">
             <div class="footer-section">
-                <h3>About HersStep</h3>
+                <h3>About HerStep</h3>
                 <p>Your destination for stylish and comfortable women's footwear.</p>
             </div>
             <div class="footer-section">
@@ -105,103 +105,106 @@
 
     <script src="../js/app.js"></script>
     <script>
-        let filteredProducts = [...store.products];
-        
-        function renderProducts() {
+        // FIX 5: Define window.renderProducts BEFORE app.js runs so the async
+        // fetch callback in loadProducts() can find and call it correctly.
+        // This replaces the old version that wasn't on window and used the
+        // wrong container ID (#product-grid vs #products-container).
+        window.renderProducts = function() {
+            applyFiltersAndRender();   // render with current filter state
+            populateModelFilter();     // FIX 6: was defined but never called
+        };
+
+        // --- Filter & sort state ---
+        function getFilteredProducts() {
+            let items = [...window.store.products];
+
+            // Search
+            const searchVal = (document.getElementById('search')?.value || '').trim().toLowerCase();
+            if (searchVal) {
+                items = items.filter(p =>
+                    p.name.toLowerCase().includes(searchVal) ||
+                    (p.description || '').toLowerCase().includes(searchVal) ||
+                    (p.model || '').toLowerCase().includes(searchVal)
+                );
+            }
+
+            // Model filter
+            const modelVal = document.getElementById('model-filter')?.value || '';
+            if (modelVal) {
+                items = items.filter(p => p.model === modelVal);
+            }
+
+            // Price filter
+            const priceVal = document.getElementById('price-filter')?.value || '';
+            if (priceVal) {
+                if (priceVal === '100+') {
+                    items = items.filter(p => Number(p.price) >= 100);
+                } else {
+                    const [min, max] = priceVal.split('-').map(Number);
+                    items = items.filter(p => Number(p.price) >= min && Number(p.price) < max);
+                }
+            }
+
+            // Sort
+            const sortVal = document.getElementById('sort-by')?.value || 'name';
+            if (sortVal === 'price-low')  items.sort((a, b) => a.price - b.price);
+            if (sortVal === 'price-high') items.sort((a, b) => b.price - a.price);
+            if (sortVal === 'name')       items.sort((a, b) => a.name.localeCompare(b.name));
+            if (sortVal === 'model')      items.sort((a, b) => (a.model || '').localeCompare(b.model || ''));
+            if (sortVal === 'color')      items.sort((a, b) => (a.color || '').localeCompare(b.color || ''));
+
+            return items;
+        }
+
+        function applyFiltersAndRender() {
             const container = document.getElementById('products-container');
-            
-            if (filteredProducts.length === 0) {
-                container.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No products found.</p>';
+            if (!container) return;
+
+            const items = getFilteredProducts();
+
+            if (items.length === 0) {
+                container.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--text-light);">No products found.</p>';
                 return;
             }
 
-            container.innerHTML = filteredProducts.map(product => `
-                <div class="card">
-                    <div class="card-img"><img src="${product.image}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;"></div>
-                    <div class="card-body">
-                        <h3 class="card-title">${product.name} <small style="color:#666;font-weight:400;">#${product.id}</small></h3>
-                        <p class="card-text">${product.description}</p>
-                        <div class="card-price">${formatCurrency(product.price)}</div>
-                        <div style="margin-bottom: 1rem; color: var(--text-light);">Model: ${product.model} · Color: ${product.color} · (${product.stock} in stock)</div>
-                        <button class="btn btn-primary" onclick="addToCart(${product.id})" ${product.stock === 0 ? 'disabled' : ''}>
-                            ${product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                        </button>
-                    </div>
+            container.innerHTML = items.map(product => `
+                <div class="product-card">
+                    <img src="${product.image}" alt="${product.name}">
+                    <h3>${product.name}</h3>
+                    <p>${window.formatCurrency(product.price)}</p>
+                    <button onclick="addToCart(${product.id})">Add to Cart</button>
                 </div>
             `).join('');
         }
-        
-        function filterProducts() {
-            const category = document.getElementById('model-filter').value;
-            const priceRange = document.getElementById('price-filter').value;
-            const sortBy = document.getElementById('sort-by').value;
-            const searchTerm = document.getElementById('search').value.toLowerCase();
-            
-            filteredProducts = store.products.filter(product => {
-                // Model filter
-                if (category && product.model !== category) return false;
-                
-                // Price filter
-                if (priceRange) {
-                    const [min, max] = priceRange.split('-').map(v => v === '+' ? Infinity : parseFloat(v));
-                    if (product.price < min || product.price > max) return false;
-                }
-                
-                // Search filter
-                if (searchTerm && !product.name.toLowerCase().includes(searchTerm) && 
-                    !product.description.toLowerCase().includes(searchTerm)) {
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            // Sort
-            switch(sortBy) {
-                case 'name':
-                    filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
-                    break;
-                case 'price-low':
-                    filteredProducts.sort((a, b) => a.price - b.price);
-                    break;
-                case 'price-high':
-                    filteredProducts.sort((a, b) => b.price - a.price);
-                    break;
-                case 'model':
-                    filteredProducts.sort((a, b) => (a.model || '').localeCompare(b.model || ''));
-                    break;
-                case 'color':
-                    filteredProducts.sort((a, b) => (a.color || '').localeCompare(b.color || ''));
-                    break;
-            }
-            
-            renderProducts();
-        }
-        
-        function addToCart(productId) {
-            const product = products.getById(productId);
-            if (product && product.stock > 0) {
-                cart.add(product);
-                showNotification('Added to cart!', 'success');
-            }
-        }
-        
-        // Event listeners
-        document.getElementById('model-filter').addEventListener('change', filterProducts);
-        document.getElementById('price-filter').addEventListener('change', filterProducts);
-        document.getElementById('sort-by').addEventListener('change', filterProducts);
-        document.getElementById('search').addEventListener('input', filterProducts);
-        
-        // Populate model filter from available products
-        (function populateModelFilter(){
-            const sel = document.getElementById('model-filter');
-            if (!sel) return;
-            const models = [...new Set(store.products.map(p => p.model))].sort();
-            sel.innerHTML = '<option value="">All Models</option>' + models.map(m => `<option value="${m}">${m}</option>`).join('');
-        })();
 
-        // Initial render
-        renderProducts();
+        // FIX 6: Actually call this — it was defined but never invoked before
+        function populateModelFilter() {
+            const sel = document.getElementById('model-filter');
+            if (!sel || !window.store.products.length) return;
+            const models = [...new Set(window.store.products.map(p => p.model).filter(Boolean))].sort();
+            sel.innerHTML = '<option value="">All Models</option>' +
+                models.map(m => `<option value="${m}">${m}</option>`).join('');
+        }
+
+        function addToCart(productId) {
+            const product = window.store.products.find(p => p.id === productId);
+            if (product) {
+                if (product.stock > 0) {
+                    window.cart.add(product);
+                    window.showNotification(`Added ${product.name} to cart!`, 'success');
+                } else {
+                    window.showNotification('Sorry, this item is out of stock.', 'error');
+                }
+            } else {
+                console.error('Product not found in store:', productId);
+            }
+        }
+
+        // Wire up filter/search controls so they re-render on any change
+        ['model-filter', 'price-filter', 'sort-by'].forEach(id => {
+            document.getElementById(id)?.addEventListener('change', applyFiltersAndRender);
+        });
+        document.getElementById('search')?.addEventListener('input', applyFiltersAndRender);
     </script>
 </body>
 </html>
