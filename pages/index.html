@@ -145,23 +145,19 @@
             }
 
             container.innerHTML = featuredProducts.map(product => `
-                <div class="card">
-                    <div class="card-img">
-                        <img src="${product.image}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;">
+                <div class="product-card">
+                    <img src="${product.image}" alt="${product.name}">
+                    <h3>${product.name}</h3>
+                    <p class="product-desc">${(product.description || '').length > 120 ? (product.description || '').slice(0,120) + '...' : (product.description || '')}</p>
+                    <div class="product-meta" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:0.5rem;">
+                        <div class="price">${window.formatCurrency(product.price)}</div>
+                        <div class="stock ${Number(product.stock || 0) > 0 ? 'in-stock' : 'out-of-stock'}">Stock: ${Number(product.stock || 0)}</div>
                     </div>
-                    <div class="card-body">
-                        <h3 class="card-title">${product.name}</h3>
-                        <p class="card-text">${product.description || ''}</p>
-                        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;">
-                            <div class="card-price">${window.formatCurrency(product.price)}</div>
-                            <div style="font-size:0.9rem;color:var(--text-light);">Model: ${product.model || '—'} • ID: ${product.id}</div>
-                        </div>
-                        <div style="margin-top:0.5rem; font-size:0.95rem; color:var(--text-light); display:flex; justify-content:space-between; align-items:center;">
-                            <div>Stock: ${Number(product.stock || 0)}</div>
-                            <div></div>
-                        </div>
-                        <button class="btn btn-primary" onclick="addToCart(${product.id})">Add to Cart</button>
+                    <div class="product-meta" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:0.25rem;font-size:0.9rem;color:var(--text-light);">
+                        <div>Model: ${product.model || '—'}</div>
+                        <div>ID: ${product.id}</div>
                     </div>
+                    <button class="btn btn-primary" onclick="addToCart(${product.id})" ${Number(product.stock || 0) > 0 ? '' : 'disabled'}>Add to Cart</button>
                 </div>
             `).join('');
         }

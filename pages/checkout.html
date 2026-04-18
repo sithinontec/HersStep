@@ -273,6 +273,13 @@
             const errorEl = document.getElementById('error-message');
             errorEl.style.display = 'none';
 
+            // Prevent staff accounts from placing orders
+            if (store.currentUser && store.currentUser.role === 'staff') {
+                errorEl.textContent = 'Staff accounts are not permitted to place orders.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
             // Validate shipping info
             const fullName = document.getElementById('fullName').value.trim();
             const address = document.getElementById('address').value.trim();
@@ -417,6 +424,22 @@
                     errorEl.textContent = 'Payment failed. Please verify your payment details and try again.';
                     errorEl.style.display = 'block';
                 }
+            }
+        })();
+
+        // Disable checkout UI if current user is staff
+        (function disableCheckoutForStaff() {
+            if (store.currentUser && store.currentUser.role === 'staff') {
+                const errorEl = document.getElementById('error-message');
+                errorEl.textContent = 'Staff accounts cannot checkout. Please use a customer account.';
+                errorEl.style.display = 'block';
+                const placeBtn = document.querySelector('button[onclick="placeOrder()"]');
+                if (placeBtn) placeBtn.disabled = true;
+                // Optionally hide payment fields
+                document.querySelectorAll('.payment-fields').forEach(el => el.style.display = 'none');
+                // Prevent create-account option
+                const createCheckbox = document.getElementById('create-account-checkbox');
+                if (createCheckbox) createCheckbox.disabled = true;
             }
         })();
 

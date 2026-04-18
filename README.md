@@ -105,11 +105,6 @@ Start the server in `server/` with `npm start`. When a MySQL connection is avail
 - **Email:** staff@herstep.com
 - **Password:** staff123
 
-### Admin Account
-- **Email:** admin@herstep.com
-- **Password:** admin123  
-_Note: Admin UI is not part of the current prototype; staff pages are included for product/order workflows._
-
 
 ## Promo codes
 

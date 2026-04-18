@@ -85,6 +85,10 @@ const auth = {
 
     logout: function() {
         store.currentUser = null;
+        // Clear the user's cart on logout to avoid persisting items between sessions
+        try {
+            if (typeof cart !== 'undefined' && typeof cart.clear === 'function') cart.clear();
+        } catch (e) {}
         localStorage.removeItem('hersstep_currentUser');
         window.location.href = 'index.html';
     },
@@ -106,18 +110,37 @@ const auth = {
 // 3. CART MANAGEMENT
 const cart = {
     add: function(product, quantity = 1) {
+        // Ensure we never add more than available stock
+        const stockAvailable = Number(product.stock || 0);
+        if (stockAvailable <= 0) {
+            window.showNotification('Item is out of stock', 'error');
+            return;
+        }
+
         const existingItem = store.cart.find(item => item.id === product.id);
         if (existingItem) {
-            existingItem.quantity += quantity;
+            const desired = existingItem.quantity + Number(quantity || 0);
+            if (desired > stockAvailable) {
+                existingItem.quantity = stockAvailable;
+                this.saveCart();
+                updateCartCount();
+                window.showNotification('Added up to available stock only', 'warning');
+                return;
+            }
+            existingItem.quantity = desired;
         } else {
+            const q = Number(quantity || 0) > stockAvailable ? stockAvailable : Number(quantity || 0);
             store.cart.push({
                 id: product.id,
                 name: product.name,
                 price: product.price,
                 image: product.image,
-                quantity,
+                quantity: q,
                 stock: product.stock
             });
+            if (q < Number(quantity || 0)) {
+                window.showNotification('Added up to available stock only', 'warning');
+            }
         }
         this.saveCart();
         updateCartCount();
@@ -164,7 +187,13 @@ const cart = {
         }
         const item = store.cart.find(i => i.id === productId);
         if (item) {
-            item.quantity = newQuantity;
+            const stockAvailable = Number(item.stock || 0);
+            if (Number(newQuantity) > stockAvailable) {
+                item.quantity = stockAvailable;
+                window.showNotification('Quantity capped to available stock', 'warning');
+            } else {
+                item.quantity = newQuantity;
+            }
             this.saveCart();
             updateCartCount();
         }
