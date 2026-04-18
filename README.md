@@ -22,6 +22,79 @@ npm start
 
 Serving via the included server ensures frontend calls to `/api/*` work and data is persisted in `server/db.json`.
 
+### Database setup
+
+The server supports two database modes — a simple local JSON file (default) or MySQL for persistent storage.
+
+- File-based (default): the server falls back to a JSON DB at `server/db.json`. To create an initial empty DB file you can run:
+
+```bash
+echo '{ "products": [], "users": [], "orders": [] }' > server/db.json
+```
+
+Or simply start the server and it will create the file automatically when data is first written.
+
+- MySQL (optional - persistent): create a MySQL database and user, then add a `.env` file at the project root with the connection values:
+
+```
+DB_HOST=localhost
+DB_USER=your_user
+DB_PASSWORD=your_password
+DB_NAME=herstep_db
+```
+
+Create the required tables (example SQL):
+
+```sql
+CREATE TABLE users (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	first_name VARCHAR(100),
+	last_name VARCHAR(100),
+	age INT NULL,
+	email VARCHAR(255) UNIQUE,
+	phone VARCHAR(50) NULL,
+	password VARCHAR(255),
+	role VARCHAR(50) DEFAULT 'customer',
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE products (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	name VARCHAR(255),
+	model VARCHAR(255),
+	color VARCHAR(100),
+	description TEXT,
+	price DECIMAL(10,2) DEFAULT 0,
+	stock INT DEFAULT 0,
+	image VARCHAR(512) NULL
+);
+
+CREATE TABLE orders (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	order_number VARCHAR(255),
+	user_id INT,
+	total DECIMAL(10,2),
+	discount DECIMAL(10,2),
+	payment_method VARCHAR(100),
+	status VARCHAR(50),
+	shipping_address JSON NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE order_items (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	order_id INT,
+	product_id INT,
+	quantity INT,
+	unit_price DECIMAL(10,2),
+	FOREIGN KEY (order_id) REFERENCES orders(id),
+	FOREIGN KEY (product_id) REFERENCES products(id)
+);
+```
+
+Start the server in `server/` with `npm start`. When a MySQL connection is available the server will use MySQL automatically; otherwise it will fall back to `server/db.json`.
+
 ## 👤 Test Accounts
 
 ### Customer Account
