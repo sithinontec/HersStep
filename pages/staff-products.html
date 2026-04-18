@@ -97,6 +97,7 @@
         const saveAllBtn = document.getElementById('save-all-btn');
 
         let editedProducts = new Set();
+        let newProducts = new Set();
 
         // Populate model filter
         function populateCategories() {
@@ -185,7 +186,7 @@
             `).join('');
         }
 
-        window.adjustStock = async function(id, delta) {
+        window.adjustStock = function(id, delta) {
             const p = products.getById(id);
             if (!p) return;
             
@@ -193,7 +194,7 @@
             const newStock = Math.max(0, oldStock + delta);
             if (newStock !== oldStock) {
                 try {
-                    await products.update(id, { stock: newStock });
+                    products.localUpdate(id, { stock: newStock });
                     editedProducts.add(id);
                     updateSaveButton();
                     renderProducts();
@@ -204,14 +205,14 @@
             }
         };
 
-        window.updateStockDirect = async function(id, newStockValue) {
+        window.updateStockDirect = function(id, newStockValue) {
             const p = products.getById(id);
             if (!p) return;
             
             const newStock = Math.max(0, parseInt(newStockValue, 10) || 0);
             if (newStock !== p.stock) {
                 try {
-                    await products.update(id, { stock: newStock });
+                    products.localUpdate(id, { stock: newStock });
                     editedProducts.add(id);
                     updateSaveButton();
                     showNotification(`Stock updated: ${p.name} (${p.stock} → ${newStock})`, 'success');
@@ -222,15 +223,27 @@
             }
         };
 
-        function markAsEdited() {
-            // Mark that there are unsaved changes (use a special flag)
-            editedProducts.add('__changes__');
+        function markAsEdited(id) {
+            // If an id is provided, add that specific product id to the set.
+            // For deletes, callers should add a `del:${id}` entry so it remains
+            // trackable even though the product row may be removed.
+            if (id !== undefined && id !== null) {
+                editedProducts.add(id);
+            }
             updateSaveButton();
         }
 
         function updateSaveButton() {
-            saveAllBtn.style.display = editedProducts.size > 0 ? 'inline-block' : 'none';
-            saveAllBtn.textContent = `💾 Save All Changes (${editedProducts.size})`;
+            // Normalize editedProducts entries so deletions like 'del:123' count
+            const normalized = new Set();
+            editedProducts.forEach(v => {
+                const s = String(v);
+                if (s.startsWith('del:')) normalized.add(s.slice(4));
+                else normalized.add(s);
+            });
+            const count = normalized.size;
+            saveAllBtn.style.display = count > 0 ? 'inline-block' : 'none';
+            saveAllBtn.textContent = `💾 Save All Changes (${count})`;
         }
 
         function clearAddForm() {
@@ -258,6 +271,7 @@
                 });
                 if (!res.ok) throw new Error('Server save failed');
                 editedProducts.clear();
+                newProducts.clear();
                 updateSaveButton();
                 showNotification('All changes saved to database!', 'success');
                 populateCategories();
@@ -301,8 +315,12 @@
             }
 
             try {
-                await products.add(productData);
-                markAsEdited('new'); // Mark that there are changes
+                const prod = products.localAdd(productData);
+                // Track the new product id as an edited item and as a new product
+                editedProducts.add(prod.id);
+                newProducts.add(prod.id);
+                updateSaveButton();
+                updateSaveButton();
                 showNotification('Product added - don\'t forget to save all changes!', 'success');
                 clearAddForm();
                 populateCategories(); // Refresh models in case new model was added
@@ -358,7 +376,7 @@
             }
 
             try {
-                await products.update(id, updates);
+                products.localUpdate(id, updates);
                 editedProducts.add(id);
                 updateSaveButton();
                 showNotification('Product updated - don\'t forget to save all changes!', 'success');
@@ -372,20 +390,30 @@
 
         window.deleteProduct = async function(id) {
             if (!confirm('Delete this product?')) return;
-            try {
-                const ok = await products.remove(id);
-                if (ok) {
-                    editedProducts.delete(id); // Remove from edited set if it was there
-                    markAsEdited('delete'); // Mark that there are changes
-                    showNotification('Product deleted - don\'t forget to save all changes!', 'info');
-                    populateCategories(); // Refresh models in case last product of model was deleted
-                    renderProducts();
-                } else {
-                    showNotification('Failed to delete product', 'error');
+                try {
+                    const ok = products.localRemove(id);
+                    if (ok) {
+                        // If this product was newly added and not yet saved, removing it
+                        // should clear the staged add rather than mark a deletion.
+                        if (newProducts.has(String(id)) || newProducts.has(Number(id))) {
+                            newProducts.delete(id);
+                            editedProducts.delete(id);
+                            updateSaveButton();
+                            showNotification('New product removed (unsaved)', 'info');
+                        } else {
+                            // Mark the deletion so Save All knows to persist it
+                            editedProducts.add('del:' + id);
+                            updateSaveButton();
+                            showNotification('Product deleted - don\'t forget to save all changes!', 'info');
+                        }
+                        populateCategories(); // Refresh models in case last product of model was deleted
+                        renderProducts();
+                    } else {
+                        showNotification('Failed to delete product', 'error');
+                    }
+                } catch (e) {
+                    showNotification(e.message || 'Failed to delete product', 'error');
                 }
-            } catch (e) {
-                showNotification(e.message || 'Failed to delete product', 'error');
-            }
         };
 
         // Initial render

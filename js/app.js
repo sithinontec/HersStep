@@ -303,6 +303,34 @@ const products = {
         }
         return store.products.length < before;
     }
+    ,
+    // Local-only mutations: used by staff UI to stage changes locally
+    localAdd: function(productData) {
+        const errors = this.validate(productData);
+        if (errors.length) throw new Error(errors.join('; '));
+        const id = (store.products && store.products.length ? Math.max(...store.products.map(p => Number(p.id) || 0)) + 1 : 1);
+        const prod = Object.assign({ id }, productData);
+        store.products = store.products || [];
+        store.products.push(prod);
+        this.saveProducts();
+        return prod;
+    },
+    localUpdate: function(id, updates) {
+        const p = this.getById(id);
+        if (!p) throw new Error('Product not found');
+        const merged = Object.assign({}, p, updates);
+        const errors = this.validate(merged, id);
+        if (errors.length) throw new Error(errors.join('; '));
+        Object.assign(p, updates);
+        this.saveProducts();
+        return p;
+    },
+    localRemove: function(id) {
+        const before = store.products ? store.products.length : 0;
+        store.products = (store.products || []).filter(p => Number(p.id) !== Number(id));
+        this.saveProducts();
+        return store.products.length < before;
+    }
 };
 
 // 5. UI HELPERS
