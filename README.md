@@ -25,15 +25,15 @@ Serving via the included server ensures frontend calls to `/api/*` work and data
 ## 👤 Test Accounts
 
 ### Customer Account
-- **Email:** customer@hersstep.com
+- **Email:** customer@herstep.com
 - **Password:** customer123
 
 ### Staff Account
-- **Email:** staff@hersstep.com
+- **Email:** staff@herstep.com
 - **Password:** staff123
 
 ### Admin Account
-- **Email:** admin@hersstep.com
+- **Email:** admin@herstep.com
 - **Password:** admin123  
 _Note: Admin UI is not part of the current prototype; staff pages are included for product/order workflows._
 
