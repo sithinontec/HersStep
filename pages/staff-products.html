@@ -98,6 +98,7 @@
 
         let editedProducts = new Set();
         let newProducts = new Set();
+        let currentEditId = null; // only one product may be edited at a time
 
         // Populate model filter
         function populateCategories() {
@@ -152,6 +153,8 @@
         }
 
         function renderProducts() {
+            // Closing any open inline editor when re-rendering
+            currentEditId = null;
             if (!listEl) return;
             const filtered = getFilteredProducts();
             
@@ -332,9 +335,15 @@
         });
 
         window.startEditProduct = function(id) {
+            // If another product is being edited, close it first.
+            if (currentEditId && currentEditId !== id) {
+                renderProducts();
+            }
             const row = document.querySelector(`.product-row[data-id="${id}"]`);
             const p = products.getById(id);
             if (!row || !p) return;
+
+            currentEditId = id;
 
             row.innerHTML = `
                 <div style="flex:1; display:grid; grid-template-columns: 120px 1fr; gap:0.25rem; align-items:center;">
@@ -380,6 +389,8 @@
                 editedProducts.add(id);
                 updateSaveButton();
                 showNotification('Product updated - don\'t forget to save all changes!', 'success');
+                // Close the inline editor after saving and re-render
+                currentEditId = null;
                 renderProducts();
             } catch (e) {
                 showNotification(e.message || 'Failed to update product', 'error');
