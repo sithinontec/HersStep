@@ -384,5 +384,42 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
+// Update order status (partial update)
+app.patch('/api/orders/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const { status } = req.body || {};
+  if (!id || !status) return res.status(400).json({ error: 'Invalid id or status' });
+
+  if (dbClient) {
+    try {
+      await dbClient.query('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
+      // return minimal updated info
+      const rows = await dbClient.query('SELECT * FROM orders WHERE id = ?', [id]);
+      const o = rows && rows[0] ? rows[0] : null;
+      if (o) {
+        let shipping = {};
+        try { shipping = o.shipping_address ? JSON.parse(o.shipping_address) : {}; } catch (e) { shipping = {}; }
+        return res.json({ id: o.id, orderNumber: o.order_number, userId: o.user_id, status: o.status, shippingAddress: shipping });
+      }
+      return res.status(404).json({ error: 'Order not found' });
+    } catch (err) {
+      console.error('Database Orders PATCH Error:', err);
+      return res.status(500).json({ error: 'Failed to update order' });
+    }
+  }
+
+  // File fallback: try updating in db.json
+  try {
+    const db = readDB();
+    const idx = (db.orders || []).findIndex(x => Number(x.id) === id || String(x.order_number) === String(id));
+    if (idx === -1) return res.status(404).json({ error: 'Order not found' });
+    db.orders[idx].status = status;
+    writeDB(db);
+    return res.json({ id: db.orders[idx].id, orderNumber: db.orders[idx].order_number, userId: db.orders[idx].user_id, status });
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to update order' });
+  }
+});
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`🚀 Server running at http://localhost:${port}/pages/index.html`));

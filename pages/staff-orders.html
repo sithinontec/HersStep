@@ -45,6 +45,12 @@
 
     <script src="../js/app.js"></script>
     <script>
+        if (typeof store === 'undefined') {
+            const el = document.getElementById('orders-list');
+            if (el) el.textContent = 'Application failed to load (store missing). Check console for errors.';
+            throw new Error('store is undefined; app.js may have failed to load');
+        }
+
         if (!store.currentUser || store.currentUser.role !== 'staff') {
             window.location.href = 'login.html';
         }
@@ -128,15 +134,15 @@
             }
         }
 
-        window.changeOrderStatus = function(orderId, status) {
+        window.changeOrderStatus = async function(orderId, status) {
             if (!orderId) return;
             if (status === 'cancelled') {
                 if (!confirm('Cancel this order? This will restore stock.')) {
                     renderOrders();
                     return;
                 }
-                // update locally
-                const ok = orders.cancel(orderId);
+                // update locally and persist
+                const ok = await orders.cancel(orderId);
                 if (ok) {
                     showNotification('Order cancelled', 'success');
                     saveOrdersToApi();
@@ -148,7 +154,7 @@
                     renderOrders();
                     return;
                 }
-                const ok = orders.updateStatus(orderId, status);
+                const ok = await orders.updateStatus(orderId, status);
                 if (ok) {
                     showNotification('Order status updated', 'success');
                     saveOrdersToApi();
@@ -159,10 +165,10 @@
             renderOrders();
         };
 
-        window.cancelOrder = function(orderId) {
+        window.cancelOrder = async function(orderId) {
             if (!orderId) return;
             if (!confirm('Are you sure you want to cancel this order?')) return;
-            const ok = orders.cancel(orderId);
+            const ok = await orders.cancel(orderId);
             if (ok) {
                 showNotification('Order cancelled', 'success');
                 saveOrdersToApi();

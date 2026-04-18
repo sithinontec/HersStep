@@ -1,8 +1,8 @@
 -- MySQL schema for HersStep
 -- Run: mysql -u <user> -p < hersstep_db < create_tables_mysql.sql
 
-CREATE DATABASE IF NOT EXISTS hersstep_db;
-USE hersstep_db;
+CREATE DATABASE IF NOT EXISTS herstep_db;
+USE herstep_db;
 
 -- Users
 CREATE TABLE IF NOT EXISTS users (
@@ -69,3 +69,4 @@ VALUES
     ('Staff','User','staff@hersstep.com','staff123','staff'),
     ('Customer','User','customer@hersstep.com','customer123','customer')
 ON DUPLICATE KEY UPDATE email = email;
+

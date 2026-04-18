@@ -173,8 +173,12 @@
                 <div class="product-card">
                     <img src="${product.image}" alt="${product.name}">
                     <h3>${product.name}</h3>
-                    <p>${window.formatCurrency(product.price)}</p>
-                    <button onclick="addToCart(${product.id})">Add to Cart</button>
+                    <p class="product-desc">${(product.description || '').length > 120 ? (product.description || '').slice(0,120) + '...' : (product.description || '')}</p>
+                    <div class="product-meta" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:0.5rem;">
+                        <div class="price">${window.formatCurrency(product.price)}</div>
+                        <div class="stock ${Number(product.stock || 0) > 0 ? 'in-stock' : 'out-of-stock'}">Stock: ${Number(product.stock || 0)}</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="addToCart(${product.id})" ${Number(product.stock || 0) > 0 ? '' : 'disabled'}>Add to Cart</button>
                 </div>
             `).join('');
         }

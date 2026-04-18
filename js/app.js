@@ -413,8 +413,8 @@ const orders = {
             return oid === uid;
         });
     },
-    cancel: function(orderId) {
-        const ord = (store.orders || []).find(o => o.id === orderId);
+    cancel: async function(orderId) {
+        const ord = (store.orders || []).find(o => String(o.id) === String(orderId) || String(o.orderNumber) === String(orderId));
         if (!ord) return false;
         if (ord.status === 'cancelled') return true;
         // Restore stock for items if possible
@@ -430,16 +430,40 @@ const orders = {
             // persist product changes
             products.saveProducts();
         }
+
+        // Try to persist cancellation to server
+        try {
+            const r = await fetch((window.API_BASE || '') + '/api/orders/' + encodeURIComponent(ord.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'cancelled' }) });
+            if (r.ok) {
+                try { const data = await r.json(); if (data && data.status) ord.status = data.status; else ord.status = 'cancelled'; } catch (e) { ord.status = 'cancelled'; }
+                try { await this.save(); } catch (e) {}
+                return true;
+            }
+        } catch (e) {
+            // ignore and fallback
+        }
+
+        // Fallback to local update
         ord.status = 'cancelled';
-        this.save();
+        try { await this.save(); } catch (e) {}
         return true;
     },
     updateStatus: function(orderId, status) {
-        const ord = (store.orders || []).find(o => o.id === orderId);
+        const ord = (store.orders || []).find(o => String(o.id) === String(orderId) || String(o.orderNumber) === String(orderId));
         if (!ord) return false;
-        ord.status = status;
-        this.save();
-        return true;
+        // Try server PATCH first
+        return (async () => {
+            try {
+                const r = await fetch((window.API_BASE || '') + '/api/orders/' + encodeURIComponent(ord.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+                if (r.ok) {
+                    try { const data = await r.json(); if (data && data.status) ord.status = data.status; else ord.status = status; } catch (e) { ord.status = status; }
+                    return true;
+                }
+            } catch (e) {}
+            ord.status = status;
+            try { await this.save(); } catch (e) {}
+            return true;
+        })();
     },
     place: async function(pending) {
         // Simulate network delay

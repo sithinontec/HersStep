@@ -139,11 +139,15 @@
             window.location.href = 'order-details.html?orderId=' + orderId;
         }
         
-        function cancelOrder(orderId) {
+        async function cancelOrder(orderId) {
             if (confirm('Are you sure you want to cancel this order?')) {
-                orders.cancel(orderId);
-                showNotification('Order cancelled successfully', 'success');
-                renderOrders();
+                const ok = await orders.cancel(orderId);
+                if (ok) {
+                    showNotification('Order cancelled successfully', 'success');
+                    renderOrders();
+                } else {
+                    showNotification('Failed to cancel order', 'error');
+                }
             }
         }
         

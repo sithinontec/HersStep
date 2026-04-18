@@ -258,6 +258,64 @@ main {
     margin-top: 2rem;
 }
 
+/* Product card specifics */
+.product-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.product-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 6px;
+    background: var(--light-gray);
+}
+
+.product-card h3 {
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+}
+
+.product-desc {
+    color: var(--text-light);
+    font-size: 0.95rem;
+    min-height: 2.4rem;
+}
+
+.product-meta {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.stock {
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    background: var(--light-gray);
+}
+
+.stock.in-stock {
+    background: rgba(76,175,80,0.1);
+    color: var(--success-color);
+}
+
+.stock.out-of-stock {
+    background: rgba(244,67,54,0.08);
+    color: var(--error-color);
+}
+
+.product-card .btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Tables */
 .table {
     width: 100%;
